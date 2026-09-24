@@ -19,7 +19,7 @@
 
 ### 👨‍💻 Author
 
-**Anurag Ravikumar**
+**Anurag Revankar**
 
 Cybersecurity | SOC Analyst | Active Directory Security | Detection Engineering
 
