@@ -1,0 +1,17 @@
+# Local lab artifacts
+*.hash
+*.potfile
+*.pcap
+*.pcapng
+*.log
+*.tmp
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
