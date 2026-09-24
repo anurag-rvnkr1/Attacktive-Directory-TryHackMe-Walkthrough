@@ -2,7 +2,7 @@
 
 > **Enterprise Active Directory Attack Chain Documentation**
 > **TryHackMe Room:** Attacktive Directory
-> **Author:** Anurag Ravikumar
+> **Author:** Anurag R
 > **Documentation Version:** Portfolio Edition v2.0
 > **Environment:** Windows Active Directory Domain Controller
 
