@@ -1,24 +1,65 @@
 ---
 ---
 
-@import "jekyll-theme-hacker";
+/* Premium Cybersecurity Portfolio Styles */
 
-body {
-  letter-spacing: 0.01em;
+.page-header {
+  border-bottom: 2px solid #00ff41;
 }
 
-.wrapper {
-  max-width: 980px;
+.project-name {
+  color: #00ff41;
+  text-shadow: 0 0 10px #00ff41;
 }
 
-img {
-  border-radius: 6px;
+.project-tagline {
+  color: #8aff8a;
 }
 
-h1, h2, h3 {
-  letter-spacing: 0.01em;
+.main-content h1,
+.main-content h2,
+.main-content h3 {
+  color: #00ff41;
+  border-bottom: 1px solid rgba(0,255,65,.25);
+  padding-bottom: .35rem;
 }
 
-code, pre {
-  font-variant-ligatures: none;
+.main-content table {
+  display: table;
+  width: 100%;
+}
+
+.main-content table th {
+  background: #003b16;
+  color: #00ff41;
+}
+
+.main-content table td {
+  border-color: #0d4d1f;
+}
+
+.main-content img {
+  border-radius: 10px;
+  border: 1px solid #00ff41;
+  margin: 1.25rem auto;
+  display: block;
+}
+
+blockquote {
+  border-left: 4px solid #00ff41;
+  background: rgba(0,255,65,.05);
+  padding: 1rem;
+}
+
+code {
+  color: #00ff41;
+}
+
+pre {
+  border: 1px solid #00ff41;
+  border-radius: 10px;
+}
+
+hr {
+  border-color: #00ff41;
 }
