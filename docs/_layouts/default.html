@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ page.title }} | {{ site.title }}</title>
+
+  <link rel="stylesheet" href="{{ '/assets/css/custom.css' | relative_url }}">
+  <link rel="stylesheet" href="{{ '/assets/css/syntax.css' | relative_url }}">
+
+  {% seo %}
+</head>
+<body>
+
+<div id="progress-bar"></div>
+
+<header class="hero-terminal">
+
+  <div class="terminal-top">
+      <span class="dot red"></span>
+      <span class="dot yellow"></span>
+      <span class="dot green"></span>
+
+      <span class="terminal-title">
+        root@anurag:~/Attacktive-Directory
+      </span>
+  </div>
+
+  <div class="hero-content">
+
+# 👻 Attacktive Directory
+
+### Enterprise Active Directory Attack Chain
+
+<p>
+Windows Active Directory • Kerberos Abuse • AS-REP Roasting • DCSync • Pass-the-Hash
+</p>
+
+<div class="hero-badges">
+<span>TRYHACKME</span>
+<span>WINDOWS AD</span>
+<span>MITRE ATT&CK</span>
+<span>DETECTION ENGINEERING</span>
+</div>
+
+  </div>
+</header>
+
+<div class="layout-wrapper">
+
+<aside class="sidebar">
+
+## Navigation
+
+<ul>
+<li><a href="#executive-summary">Executive Summary</a></li>
+<li><a href="#lab-architecture">Architecture</a></li>
+<li><a href="#reconnaissance">Reconnaissance</a></li>
+<li><a href="#kerberos-enumeration">Kerberos Enumeration</a></li>
+<li><a href="#as-rep-roasting">AS-REP Roasting</a></li>
+<li><a href="#password-cracking">Password Cracking</a></li>
+<li><a href="#smb-enumeration">SMB Enumeration</a></li>
+<li><a href="#dcsync">DCSync</a></li>
+<li><a href="#pass-the-hash">Pass-the-Hash</a></li>
+<li><a href="#detection-engineering">Detection Engineering</a></li>
+<li><a href="#hardening">Hardening</a></li>
+<li><a href="#lessons-learned">Lessons Learned</a></li>
+</ul>
+
+<hr>
+
+### Assessment
+
+<table>
+<tr><td>Difficulty</td><td>Easy</td></tr>
+<tr><td>Target</td><td>Windows DC</td></tr>
+<tr><td>Domain</td><td>spookysec.local</td></tr>
+<tr><td>Privilege</td><td>Administrator</td></tr>
+</table>
+
+<hr>
+
+### Repository
+
+<a href="{{ site.github.repository_url }}">View Source ↗</a>
+
+</aside>
+
+<main class="content-area">
+
+{{ content }}
+
+</main>
+
+</div>
+
+<footer class="portfolio-footer">
+
+---
+
+# 👨‍💻 Anurag R
+
+Cybersecurity • SOC Analyst • Active Directory Security • Detection Engineering
+
+**Professional TryHackMe Documentation Series**
+
+Built with GitHub Pages & Jekyll.
+
+</footer>
+
+<script>
+
+const progress = document.getElementById('progress-bar');
+
+window.addEventListener('scroll',()=>{
+
+const scroll = document.documentElement.scrollTop;
+
+const height = document.documentElement.scrollHeight-document.documentElement.clientHeight;
+
+progress.style.width=(scroll/height)*100+'%';
+
+});
+
+</script>
+
+</body>
+</html>
