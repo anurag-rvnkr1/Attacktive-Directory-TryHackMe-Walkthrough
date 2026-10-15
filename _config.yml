@@ -1,28 +1,49 @@
-title: Attacktive Directory — Enterprise Active Directory Attack Chain
-description: Professional TryHackMe Active Directory walkthrough and Red Team case study.
-theme: jekyll-theme-hacker
+title: "Cybersecurity CTF Portfolio"
 
-plugins:
-  - jekyll-relative-links
-  - jekyll-seo-tag
-  - jekyll-titles-from-headings
+description: "Professional cybersecurity CTF, penetration testing, and security research documentation."
 
-relative_links:
-  enabled: true
-  collections: true
-
-titles_from_headings:
-  enabled: true
-  strip_title: true
-  collections: true
+lang: "en-US"
 
 markdown: kramdown
-highlighter: rouge
 
 kramdown:
   input: GFM
-  syntax_highlighter: rouge
+  hard_wrap: false
+
+# ------------------------------------------------------------
+# GitHub Pages / Jekyll
+# ------------------------------------------------------------
 
 include:
-  - assets
+  - docs
+
+# ------------------------------------------------------------
+# Default layout for all Markdown pages inside docs/
+# ------------------------------------------------------------
+
+defaults:
+  - scope:
+      path: "docs"
+    values:
+      layout: "default"
+
+# ------------------------------------------------------------
+# Sass
+# ------------------------------------------------------------
+
+sass:
+  sass_dir: assets/css
+  style: compressed
+
+# ------------------------------------------------------------
+# Exclusions
+# ------------------------------------------------------------
+
+exclude:
   - README.md
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
+  - .github
+  - .git
