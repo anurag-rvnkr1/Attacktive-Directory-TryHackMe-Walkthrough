@@ -1,753 +1,491 @@
-# 👻 Attacktive Directory
-
-## Enterprise Active Directory Attack Chain — Premium Red Team Case Study
-
-<div align="center">
-
-![TryHackMe](https://img.shields.io/badge/TryHackMe-Attacktive_Directory-red?style=for-the-badge\&logo=tryhackme)
-![Windows](https://img.shields.io/badge/Windows-Active_Directory-0078D6?style=for-the-badge\&logo=windows)
-![Kerberos](https://img.shields.io/badge/Kerberos-Authentication-orange?style=for-the-badge)
-![MITRE ATT\&CK](https://img.shields.io/badge/MITRE-T1003.006-critical?style=for-the-badge)
-![Blue Team](https://img.shields.io/badge/Detection-Engineering-00C853?style=for-the-badge)
-![Red Team](https://img.shields.io/badge/Privilege-Escalation-darkred?style=for-the-badge)
 
 ---
+layout: default
+title: "Attacktive Directory"
+description: "A Windows Active Directory security assessment documenting Kerberos enumeration, AS-REP Roasting, SMB credential discovery, DCSync, Pass-the-Hash, detection engineering, and defensive hardening."
+---
 
-### Professional Cybersecurity Portfolio Documentation
+<div class="ctf-hero">
 
-**Windows Active Directory • Kerberos Abuse • AS-REP Roasting • SMB Enumeration • DCSync • Pass-the-Hash • Detection Engineering**
+  <h1>Attacktive Directory</h1>
 
-**Author:** **Anurag R**
+  <p>
+    An end-to-end Active Directory security assessment in the authorized
+    TryHackMe laboratory, documenting identity reconnaissance, Kerberos
+    abuse, credential discovery, directory replication abuse, and
+    Domain Administrator access, followed by defensive detection and
+    enterprise hardening recommendations.
+  </p>
 
-Cybersecurity • SOC Analyst • Detection Engineering • Active Directory Security
+  <div class="ctf-badges">
+    <span class="ctf-badge">TryHackMe</span>
+    <span class="ctf-badge">Windows</span>
+    <span class="ctf-badge">Active Directory</span>
+    <span class="ctf-badge">Kerberos</span>
+    <span class="ctf-badge">Credential Access</span>
+    <span class="ctf-badge">Detection Engineering</span>
+  </div>
 
 </div>
 
----
+# Mission
 
-> **Enterprise Identity Attack Simulation**
+This project documents the compromise of a Windows Active Directory environment in the TryHackMe **Attacktive Directory** laboratory. The assessment follows the original investigation from network reconnaissance to privileged domain access, then examines how defenders can detect and mitigate the techniques involved.
 
-This project documents a complete compromise of a Windows **Active Directory** environment inside the authorized **TryHackMe Attacktive Directory** laboratory. The walkthrough follows a realistic Red Team methodology beginning with infrastructure reconnaissance and ending with authenticated **Domain Administrator** access through Kerberos abuse and Active Directory replication.
+The exercise demonstrates how weaknesses in identity configuration, password management, file-share permissions, and directory replication privileges can combine into a domain-wide compromise.
 
-Unlike a traditional CTF write-up, this project is written as an **enterprise penetration testing report** suitable for recruiters, SOC analysts, detection engineers, and cybersecurity portfolios.
+The report is intended for cybersecurity learners, penetration testers, SOC analysts, detection engineers, and recruiters evaluating practical Windows security knowledge.
 
----
+> **Scope:** This is an educational laboratory assessment. All techniques described here must be used only against systems for which testing is explicitly authorized.
 
-# Threat Assessment Dashboard
+## Quick Overview
 
-| Assessment Metric    | Value                                     |
-| -------------------- | ----------------------------------------- |
-| Platform             | TryHackMe                                 |
-| Environment          | Windows Active Directory                  |
-| Difficulty           | Easy *(AD Fundamentals)*                  |
-| Attack Surface       | Kerberos • LDAP • SMB • WinRM             |
-| Initial Access       | Kerberos Username Enumeration             |
-| Credential Access    | AS-REP Roasting                           |
-| Privilege Escalation | DCSync / NTDS Extraction                  |
-| Final Access         | Domain Administrator                      |
-| Report Style         | Enterprise Penetration Test Documentation |
+<div class="ctf-card-grid">
 
----
+  <div class="ctf-card">
+    <div class="ctf-card-title">Platform</div>
+    <div class="ctf-card-value">TryHackMe</div>
+  </div>
 
-# Navigation
+  <div class="ctf-card">
+    <div class="ctf-card-title">Environment</div>
+    <div class="ctf-card-value">Windows Active Directory</div>
+  </div>
 
-## Documentation Sections
+  <div class="ctf-card">
+    <div class="ctf-card-title">Difficulty</div>
+    <div class="ctf-card-value">Easy — AD Fundamentals</div>
+  </div>
 
-| Section               | Description                                    |
-| --------------------- | ---------------------------------------------- |
-| Executive Summary     | Assessment overview and engagement objectives. |
-| Lab Architecture      | Active Directory infrastructure overview.      |
-| Reconnaissance        | Nmap service enumeration and AD discovery.     |
-| Kerberos Enumeration  | Username validation using Kerbrute.            |
-| AS-REP Roasting       | Kerberos preauthentication abuse.              |
-| Password Cracking     | Offline credential recovery.                   |
-| SMB Enumeration       | Authenticated share discovery.                 |
-| Credential Recovery   | Backup credential extraction.                  |
-| DCSync Attack         | NTDS replication abuse.                        |
-| Pass-the-Hash         | Administrator authentication using NTLM.       |
-| Detection Engineering | MITRE mapping, Sigma ideas, Event IDs.         |
-| Security Hardening    | Enterprise defensive recommendations.          |
+  <div class="ctf-card">
+    <div class="ctf-card-title">Domain</div>
+    <div class="ctf-card-value">spookysec.local</div>
+  </div>
 
----
+  <div class="ctf-card">
+    <div class="ctf-card-title">Primary Focus</div>
+    <div class="ctf-card-value">Identity and Credential Security</div>
+  </div>
 
-# Executive Summary
+  <div class="ctf-card">
+    <div class="ctf-card-title">Reported Outcome</div>
+    <div class="ctf-card-value">Domain Administrator Access</div>
+  </div>
 
-## Assessment Overview
+</div>
 
-The **Attacktive Directory** room simulates a corporate Windows infrastructure where the attacker gains visibility into a Domain Controller and abuses several identity-based weaknesses to escalate privileges.
+## Assessment at a Glance
 
-The engagement demonstrates how authentication mechanisms — rather than software vulnerabilities — become the primary attack vector inside enterprise Windows environments.
+| Assessment Area | Documented Result |
+|---|---|
+| Reconnaissance | TCP service enumeration and Windows domain discovery |
+| Identity discovery | Kerberos username enumeration |
+| Initial credential access | AS-REP Roasting and offline password cracking |
+| Authenticated enumeration | SMB share discovery |
+| Additional credential discovery | Base64-encoded backup credential recovery |
+| Privilege escalation | DCSync using directory replication permissions |
+| Authentication abuse | Pass-the-Hash using recovered Administrator NTLM material |
+| Remote administration | Evil-WinRM session |
+| Defensive analysis | Windows telemetry, ATT&CK mapping, and detection concepts |
+| Final objective | Domain Administrator access and challenge completion |
 
-### Objectives
+## Navigation
 
-* Identify exposed Active Directory services.
-* Discover the Windows domain.
-* Enumerate valid domain users.
-* Abuse Kerberos preauthentication.
-* Recover reusable credentials.
-* Enumerate SMB shares.
-* Escalate privileges using replication permissions.
-* Authenticate as Domain Administrator.
+<div class="ctf-toc">
 
----
+<div class="ctf-toc-title">Documentation Map</div>
 
-## Assessment Timeline
+- [Mission](#mission)
+- [Quick Overview](#quick-overview)
+- [Assessment Objectives](#assessment-objectives)
+- [Target and Lab Information](#target-and-lab-information)
+- [Tools Used](#tools-used)
+- [Lab Architecture](#lab-architecture)
+- [Kerberos Authentication Fundamentals](#kerberos-authentication-fundamentals)
+- [Attack Chain](#attack-chain)
+- [Skills Demonstrated](#skills-demonstrated)
+- [01 — Network Reconnaissance](#01--network-reconnaissance)
+- [02 — Domain Discovery](#02--domain-discovery)
+- [03 — Kerberos Username Enumeration](#03--kerberos-username-enumeration)
+- [04 — AS-REP Roasting](#04--as-rep-roasting)
+- [05 — Offline Password Cracking](#05--offline-password-cracking)
+- [06 — Authenticated SMB Enumeration](#06--authenticated-smb-enumeration)
+- [07 — Backup Credential Discovery](#07--backup-credential-discovery)
+- [08 — Backup Account Security Analysis](#08--backup-account-security-analysis)
+- [09 — DCSync Privilege Escalation](#09--dcsync-privilege-escalation)
+- [10 — Administrator NTLM Hash Analysis](#10--administrator-ntlm-hash-analysis)
+- [11 — Pass-the-Hash Authentication](#11--pass-the-hash-authentication)
+- [12 — Post-Exploitation Validation](#12--post-exploitation-validation)
+- [13 — Challenge Completion](#13--challenge-completion)
+- [End-to-End Attack Timeline](#end-to-end-attack-timeline)
+- [MITRE ATT&CK Mapping](#mitre-attck-mapping)
+- [Detection Engineering](#detection-engineering)
+- [Windows Security Event Reference](#windows-security-event-reference)
+- [Kerberos Detection](#kerberos-detection)
+- [SMB and Credential Discovery Detection](#smb-and-credential-discovery-detection)
+- [DCSync Detection](#dcsync-detection)
+- [Pass-the-Hash and WinRM Detection](#pass-the-hash-and-winrm-detection)
+- [Indicators of Compromise](#indicators-of-compromise)
+- [Threat Hunting Playbook](#threat-hunting-playbook)
+- [SOC Investigation Checklist](#soc-investigation-checklist)
+- [Security Findings](#security-findings)
+- [Enterprise Security Hardening](#enterprise-security-hardening)
+- [Incident Response Recommendations](#incident-response-recommendations)
+- [Lessons Learned](#lessons-learned)
+- [Learning Outcomes](#learning-outcomes)
+- [Screenshot and Evidence Index](#screenshot-and-evidence-index)
+- [References and Further Reading](#references-and-further-reading)
+- [Repository Resources](#repository-resources)
+- [Responsible Use](#responsible-use)
+
+</div>
+
+# Assessment Objectives
+
+The assessment objectives documented in the original walkthrough were to:
+
+- Identify exposed network services and determine whether the target functions as a Domain Controller.
+- Discover the Active Directory domain and authentication realm.
+- Enumerate valid domain usernames.
+- Identify accounts susceptible to AS-REP Roasting.
+- Recover credentials through offline password cracking.
+- Enumerate SMB shares using authenticated access.
+- Recover additional credentials from backup storage.
+- Investigate directory replication permissions.
+- Demonstrate DCSync and retrieve domain credential material.
+- Validate Administrator access using NTLM Pass-the-Hash authentication.
+- Review detection opportunities, Windows security telemetry, and enterprise mitigations.
+- Retrieve the laboratory challenge flags, with their values intentionally redacted in this public report.
+
+# Target and Lab Information
+
+| Property | Value |
+|---|---|
+| Platform | TryHackMe |
+| Room | Attacktive Directory |
+| Target | Windows Domain Controller |
+| Domain | `spookysec.local` |
+| Reported hostname | `ATTACKTIVEDIREC` |
+| Operating system | Windows Server; exact version not documented |
+| Authentication | Active Directory Kerberos |
+| Identified services | DNS, IIS, Kerberos, RPC, NetBIOS, SMB, LDAP, LDAPS, Global Catalog, WinRM |
+| Objective | Complete the documented domain compromise |
+| Flag policy | Challenge flags intentionally redacted |
+
+The target IP address was not supplied as a literal value in the source document. Commands therefore retain the original `<TARGET-IP>` placeholder.
+
+## Assessment Scope
+
+The documented scope covers network service discovery, Active Directory enumeration, credential access, authenticated SMB investigation, directory replication abuse, administrative authentication, and post-exploitation verification.
+
+No persistence was documented. The original walkthrough states that no users, groups, services, scheduled tasks, or registry keys were created or modified as part of the post-exploitation validation.
+
+# Tools Used
+
+| Tool | Documented purpose |
+|---|---|
+| Nmap | TCP port scanning, service identification, and OS fingerprinting |
+| CrackMapExec | SMB negotiation and domain discovery |
+| NetExec | Authenticated SMB share enumeration |
+| Kerbrute | Kerberos username enumeration |
+| Impacket `GetNPUsers.py` | AS-REP Roasting requests |
+| Hashcat | Offline password cracking |
+| `smbclient` | SMB share access |
+| Base64 decoder | Decoding an encoded backup credential file |
+| CyberChef | Alternative Base64 decoding workflow |
+| Impacket `secretsdump.py` | Directory replication and credential extraction |
+| Evil-WinRM | Remote Windows administration using the recovered NTLM hash |
+
+The source uses both CrackMapExec and NetExec in different stages. The commands are retained as documented rather than silently replacing one tool with another.
+
+# Lab Architecture
+
+## Active Directory Authentication Infrastructure
+
+The original report describes a Windows Domain Controller providing directory services, Kerberos authentication, name resolution, SMB file sharing, and remote administration.
+
+<figure>
+
+  <img src="assets/architecture.png" alt="Active Directory authentication architecture referenced in the original Attacktive Directory documentation">
+
+  <figcaption>Figure 1 — Active Directory authentication architecture. The referenced image is expected at docs/assets/architecture.png.</figcaption>
+
+</figure>
+
+| Component | Role |
+|---|---|
+| Domain Controller | Central identity and authentication infrastructure |
+| Kerberos Key Distribution Center | Handles Kerberos ticket requests |
+| LDAP | Provides directory access |
+| DNS | Supports domain and service name resolution |
+| SMB | Provides network file sharing |
+| SYSVOL | Stores domain policy and related files |
+| NETLOGON | Provides logon-related scripts and resources |
+| WinRM | Supports remote PowerShell administration |
+
+## Kerberos Authentication Fundamentals
+
+The original investigation targets a weakness in Kerberos preauthentication.
+
+A simplified authentication flow is:
 
 ```text
-Reconnaissance
-      │
-      ▼
-Active Directory Discovery
-      │
-      ▼
-Kerberos Username Enumeration
-      │
-      ▼
-AS-REP Roasting
-      │
-      ▼
-Offline Password Cracking
-      │
-      ▼
-Authenticated SMB Enumeration
-      │
-      ▼
-Backup Credential Recovery
-      │
-      ▼
-DCSync / NTDS Extraction
-      │
-      ▼
-Pass-the-Hash Authentication
-      │
-      ▼
-Domain Administrator Access
-```
-
----
-
-# Engagement Scope
-
-## Lab Information
-
-| Property         | Value                           |
-| ---------------- | ------------------------------- |
-| Target           | Windows Domain Controller       |
-| Domain           | `spookysec.local`               |
-| Operating System | Windows Server                  |
-| Services         | Kerberos, LDAP, SMB, WinRM, DNS |
-| Authentication   | Active Directory Kerberos       |
-| Objective        | Complete Domain Compromise      |
-
----
-
-## Tools Used During Assessment
-
-| Tool                   | Purpose                           |
-| ---------------------- | --------------------------------- |
-| Nmap                   | Network reconnaissance            |
-| NetExec / CrackMapExec | SMB and domain discovery          |
-| Kerbrute               | Kerberos username enumeration     |
-| GetNPUsers (Impacket)  | AS-REP Roasting                   |
-| Hashcat                | Offline password cracking         |
-| SMBClient              | SMB share access                  |
-| CyberChef / Base64     | Credential decoding               |
-| SecretsDump (Impacket) | NTDS extraction                   |
-| Evil-WinRM             | Pass-the-Hash administrator shell |
-
----
-
-# Active Directory Lab Architecture
-
-## Enterprise Authentication Infrastructure
-
-![Active Directory Architecture](assets/images/architecture.png)
-
-*Figure 1 — High-level Active Directory authentication architecture used throughout this assessment.*
-
----
-
-### Components Identified
-
-| Component         | Purpose                                     |
-| ----------------- | ------------------------------------------- |
-| Domain Controller | Identity provider for the domain.           |
-| Kerberos KDC      | Issues authentication tickets.              |
-| LDAP              | Directory information service.              |
-| DNS               | Domain name resolution.                     |
-| SMB               | Network file sharing.                       |
-| SYSVOL            | Group Policy distribution.                  |
-| NETLOGON          | Logon scripts and authentication resources. |
-| WinRM             | Remote administrative PowerShell access.    |
-
----
-
-## Kerberos Authentication Flow
-
-```text
-User
- │
- │ AS-REQ
- ▼
-Key Distribution Center
- │
- │ AS-REP
- ▼
-Ticket Granting Ticket
- │
- │ TGS-REQ
- ▼
+Client
+  |
+  | AS-REQ
+  v
+Kerberos Key Distribution Center
+  |
+  | AS-REP
+  v
+Ticket-Granting Ticket
+  |
+  | TGS-REQ
+  v
 Service Ticket
- │
- ▼
-Windows Service
+  |
+  v
+Target Service
 ```
 
-Understanding this authentication flow is essential because the room abuses **AS-REP ticket generation** to obtain offline-crackable authentication material.
+Under normal conditions, Kerberos preauthentication helps establish that a client knows the account's secret before the Key Distribution Center issues the relevant authentication response.
 
----
+When preauthentication is disabled for an account, an AS-REP response can contain material that is suitable for offline password guessing. That is the condition exploited during the AS-REP Roasting stage.
 
-# Red Team Attack Path Visualization
+# Attack Chain
 
-## Enterprise Identity Attack Chain
+<div class="attack-chain">
 
-```text
-Internet
-   │
-   ▼
-Port Enumeration
-   │
-   ▼
-Domain Discovery
-   │
-   ▼
-Kerberos Enumeration
-   │
-   ▼
-AS-REP Roasting
-   │
-   ▼
-Password Recovery
-   │
-   ▼
-SMB Enumeration
-   │
-   ▼
-Credential Harvesting
-   │
-   ▼
-Backup Account Compromise
-   │
-   ▼
-DCSync Attack
-   │
-   ▼
-Administrator NTLM Hash
-   │
-   ▼
-Pass-the-Hash
-   │
-   ▼
-Domain Administrator Shell
-```
+  <div class="attack-step">Nmap Recon</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">Domain Discovery</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">Kerberos Enumeration</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">AS-REP Roasting</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">Offline Cracking</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">SMB Enumeration</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">Backup Credentials</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">DCSync</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">Pass-the-Hash</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">Administrator Access</div>
 
----
+</div>
 
-## ATT&CK Kill Chain Summary
-
-| Phase              | MITRE ATT&CK |
-| ------------------ | ------------ |
-| Reconnaissance     | T1595        |
-| Discovery          | T1087        |
-| Credential Access  | T1558.004    |
-| Credential Access  | T1110.002    |
-| Credential Access  | T1552.001    |
-| Credential Dumping | T1003.006    |
-| Lateral Movement   | T1021        |
-| Defense Evasion    | T1550.002    |
-
----
+The chain above reflects the sequence described in the supplied walkthrough. It should be understood as the documented laboratory attack path, not as evidence that every environment exposing these services is vulnerable.
 
 # Skills Demonstrated
 
 ## Offensive Security
 
-* Windows Domain Enumeration
-* Kerberos Username Enumeration
-* AS-REP Roasting
-* Offline Password Cracking
-* SMB Share Enumeration
-* Credential Harvesting
-* DCSync
-* Pass-the-Hash
-* Evil-WinRM Administration
-
----
+- Network reconnaissance and service enumeration.
+- Windows Domain Controller identification.
+- SMB negotiation and share enumeration.
+- Kerberos username enumeration.
+- AS-REP Roasting.
+- Offline password cracking.
+- Backup credential discovery.
+- Active Directory replication permission analysis.
+- DCSync and NTDS credential material extraction.
+- NTLM Pass-the-Hash authentication.
+- WinRM remote administration.
+- Post-exploitation privilege validation.
 
 ## Defensive Security
 
-* Windows Event IDs
-* Kerberos Monitoring
-* Replication Monitoring
-* Sigma Detection Ideas
-* IOC Identification
-* NTLM Security
-* SMB Auditing
-* Active Directory Hardening
+- Windows Security event analysis.
+- Kerberos authentication monitoring.
+- SMB access auditing.
+- DCSync detection concepts.
+- NTLM and remote administration monitoring.
+- MITRE ATT&CK mapping.
+- Indicators of Compromise identification.
+- Sigma detection concepts.
+- Threat hunting and incident correlation.
+- Active Directory privilege hardening.
+- Credential protection and incident response planning.
 
----
-
-# Lab Objectives Completed
-
-| Objective                        | Status                    |
-| -------------------------------- | ------------------------- |
-| Identify Active Directory Domain | 🟢 Completed              |
-| Enumerate Users                  | 🟢 Completed              |
-| AS-REP Roast Vulnerable Account  | 🟢 Completed              |
-| Recover Credentials              | 🟢 Completed              |
-| Enumerate SMB Shares             | 🟢 Completed              |
-| Recover Backup Credentials       | 🟢 Completed              |
-| Dump NTDS Credentials            | 🟢 Completed              |
-| Authenticate as Administrator    | 🟢 Completed              |
-| Retrieve Challenge Flags         | 🟢 Completed *(Redacted)* |
-
----
-
-# Screenshot Gallery
-
-## Assessment Evidence
-
-| Phase                  | Screenshot                                      |
-| ---------------------- | ----------------------------------------------- |
-| Initial Reconnaissance | `assets/images/01-nmap-recon.png`               |
-| Domain Discovery       | `assets/images/02-domain-discovery.png`         |
-| Kerberos Enumeration   | `assets/images/03-kerberos-user-enum.png`       |
-| AS-REP Attack          | `assets/images/04-asrep-enumeration.png`        |
-| Password Recovery      | `assets/images/05-hashcat-crack.png`            |
-| SMB Enumeration        | `assets/images/06-smb-share-enum.png`           |
-| Backup Credentials     | `assets/images/07-backup-credential-decode.png` |
-| NTDS Extraction        | `assets/images/08-ntds-dump.png`                |
-| Administrator Shell    | `assets/images/09-administrator-shell.png`      |
-| Challenge Completion   | `assets/images/10-flag-redacted.png`            |
-
-> Every screenshot has been recreated and organized specifically for this portfolio documentation.
-
----
-
-# Learning Outcomes
-
-This assessment teaches the complete identity attack lifecycle inside Windows enterprise environments.
-
-After completing this room you should understand:
-
-* Active Directory architecture.
-* Kerberos authentication internals.
-* LDAP reconnaissance.
-* Username enumeration.
-* AS-REP Roasting.
-* Offline password cracking.
-* SMB credential discovery.
-* DCSync attacks.
-* NTDS extraction.
-* Pass-the-Hash authentication.
-* Detection engineering for Active Directory attacks.
-
----
-
-# Documentation Roadmap
-
-```text
-Part I
-──────
-Executive Summary
-Architecture
-Threat Model
-Reconnaissance
-
-        ▼
-
-Part II
-────────
-Kerberos Enumeration
-AS-REP Roasting
-Password Cracking
-SMB Enumeration
-
-        ▼
-
-Part III
-─────────
-Credential Discovery
-DCSync
-Pass-the-Hash
-Administrator Shell
-
-        ▼
-
-Part IV
-────────
-Detection Engineering
-MITRE ATT&CK
-Windows Event IDs
-Hardening Recommendations
-Lessons Learned
-```
-
----
-
-<div align="center">
-
-## 🛡️ Enterprise Active Directory Red Team Case Study
-
-**Professional GitHub Pages Documentation**
-
-*Designed for cybersecurity recruiters, SOC analysts, penetration testers, and detection engineers.*
-
-</div>
-
----
-
----
-
-# Reconnaissance & Active Directory Discovery
-
-> *Every successful Active Directory compromise begins with understanding the identity infrastructure.*
-
-The first phase of the assessment focused on identifying exposed network services, discovering whether the target operated as a Windows Domain Controller, and collecting enough intelligence to begin attacking the Kerberos authentication infrastructure.
-
-Unlike web application CTFs, this engagement starts by mapping enterprise authentication services rather than searching for HTTP vulnerabilities.
-
----
-
-# Phase 01 — Network Reconnaissance
+# 01 — Network Reconnaissance
 
 ## Objective
 
-The initial reconnaissance stage had four primary goals:
+Identify exposed TCP services, fingerprint the target, determine its likely operating system, and establish whether the host provides Active Directory services.
 
-- Identify all exposed TCP services.
-- Determine the operating system.
-- Detect Active Directory services.
-- Discover authentication protocols exposed to the network.
-
----
-
-## Attack Methodology
+## Methodology
 
 ```text
-Internet Access
-      │
-      ▼
-Host Discovery
-      │
-      ▼
+Target Reachability
+        |
+        v
 TCP Port Enumeration
-      │
-      ▼
+        |
+        v
 Service Fingerprinting
-      │
-      ▼
+        |
+        v
 Operating System Identification
-      │
-      ▼
-Domain Controller Confirmation
+        |
+        v
+Active Directory Service Discovery
 ```
 
----
+## Nmap Enumeration
 
-## Tool Used
-
-### Nmap
-
-Nmap was used to enumerate every TCP port and identify service versions running on the target Windows Server.
-
-| Tool | Purpose |
-|------|---------|
-| Nmap | TCP Service Enumeration |
-| NSE Scripts | Version Detection |
-| OS Detection | Windows Fingerprinting |
-
----
-
-## Command Executed
+The original command was:
 
 ```bash
 nmap -Pn -A -p- -T4 <TARGET-IP>
 ```
 
----
+### Command explanation
 
-## Why These Flags?
+| Option | Purpose |
+|---|---|
+| `-Pn` | Skip host discovery and treat the target as online |
+| `-A` | Enable OS detection, version detection, default NSE scripts, and traceroute |
+| `-p-` | Scan all TCP ports |
+| `-T4` | Use a faster timing profile |
+| `<TARGET-IP>` | Target address placeholder from the original documentation |
 
-| Flag | Explanation |
-|------|-------------|
-| `-Pn` | Skip ICMP discovery. |
-| `-A` | Version detection + OS detection + NSE scripts. |
-| `-p-` | Scan every TCP port. |
-| `-T4` | Faster timing profile. |
+The command was used to map the target's TCP attack surface and identify services associated with Windows and Active Directory.
 
----
+## Screenshot — Initial Enumeration
 
-# Screenshot — Initial Enumeration
+<figure>
 
-![Nmap Enumeration](assets/images/01-nmap-recon.png)
+  <img src="assets/01-nmap-recon.png" alt="Nmap reconnaissance screenshot referenced by the original walkthrough">
 
-> **Figure 2.1 — Full TCP scan identifying Windows Active Directory services.**
+  <figcaption>Figure 2.1 — Initial TCP service enumeration. Expected path: docs/assets/01-nmap-recon.png.</figcaption>
 
----
+</figure>
+
+## Documented Service Inventory
+
+The original walkthrough reports the following service ports.
+
+| Port | Service | Security relevance |
+|---:|---|---|
+| 53 | DNS | Domain and service name resolution |
+| 80 | IIS / HTTP | Web service exposed by the target |
+| 88 | Kerberos | Domain authentication |
+| 135 | RPC | Windows remote procedure calls |
+| 139 | NetBIOS | Legacy SMB transport |
+| 389 | LDAP | Directory services |
+| 445 | SMB | File sharing and authenticated access |
+| 464 | Kerberos password change | Kerberos password-management operations |
+| 593 | RPC over HTTP | RPC-related remote communication |
+| 636 | LDAPS | LDAP over TLS |
+| 3268 | Global Catalog | Forest-wide directory queries |
+| 5985 | WinRM | HTTP-based Windows remote management |
+
+The original document does not provide verified service-version strings, so none are added here.
 
 ## Reconnaissance Analysis
 
-The scan immediately revealed indicators that the target was functioning as a Domain Controller.
+The combination of Kerberos on port 88, LDAP on port 389, and Global Catalog on port 3268 is consistent with a Windows Active Directory Domain Controller.
 
-### Interesting Services Identified
+SMB and WinRM were also relevant to the later authenticated enumeration and remote-administration stages.
 
-| Port | Service | Security Importance |
-|------|---------|--------------------|
-| 53 | DNS | Active Directory name resolution. |
-| 80 | IIS | Web Server. |
-| 88 | Kerberos | Authentication service. |
-| 135 | RPC | Remote procedure calls. |
-| 139 | NetBIOS | SMB legacy transport. |
-| 389 | LDAP | Directory Services. |
-| 445 | SMB | Network Shares. |
-| 464 | Kerberos Password Change | Kerberos management. |
-| 593 | RPC over HTTP | Remote management. |
-| 636 | LDAPS | Secure LDAP. |
-| 3268 | Global Catalog | Forest-wide LDAP queries. |
-| 5985 | WinRM | PowerShell Remoting. |
+### Initial attack surface
 
----
+| Service | Investigation focus |
+|---|---|
+| Kerberos | Username discovery and AS-REP Roasting exposure |
+| LDAP | Directory information discovery |
+| SMB | Share enumeration and sensitive file access |
+| WinRM | Potential remote administration using valid credentials |
+| DNS | Domain and service discovery |
+| IIS | Exposed web service; no specific web exploit is documented in this assessment |
 
-## Why These Ports Matter
+## SMB Signing Observation
 
-Presence of **Kerberos (88)** and **LDAP (389)** together is one of the strongest indicators that a Windows server belongs to an Active Directory domain.
+The source reports that SMB signing was enabled.
 
-The Global Catalog LDAP service further confirms forest-level directory functionality.
+SMB signing helps protect message integrity and can constrain certain SMB relay attack scenarios. It does not prevent an attacker with valid credentials from accessing shares permitted to that account.
 
----
+The reported signing state is retained from the source material; the original scan output is not reproduced as raw evidence here.
 
-# Initial Attack Surface Assessment
+## Blue Team Perspective
 
-| Service | Risk |
-|---------|------|
-| Kerberos | Username Enumeration, AS-REP Roasting |
-| LDAP | Directory Enumeration |
-| SMB | Credential Discovery |
-| WinRM | Pass-the-Hash Target |
-| DNS | Domain Discovery |
+Relevant detection sources include firewall telemetry, IDS/IPS alerts, endpoint network monitoring, and SIEM correlation of unusual connection patterns.
 
----
+Potential indicators include:
 
-## Security Observation
+- A single source contacting many TCP ports.
+- Unexpected connection attempts against Domain Controller services.
+- Reconnaissance from a workstation that does not normally administer the domain.
+- Rapid service discovery followed by Kerberos and SMB activity.
 
-SMB signing was enabled.
+**Stage outcome:** The documented scan identified a Windows Active Directory-oriented attack surface.
 
-### Security Impact
-
-✅ Prevents SMB Relay attacks.
-
-⚠️ Does **not** prevent authenticated SMB enumeration after credentials are compromised.
-
----
-
-# Blue Team Perspective
-
-Reconnaissance activity often generates:
-
-| Event Source | Detection |
-|-------------|-----------|
-| Firewall | Port Scan |
-| IDS/IPS | SYN Sweep |
-| Defender for Endpoint | Network Discovery |
-| SIEM | Multiple Port Connection Attempts |
-
----
-
-## MITRE ATT&CK
-
-| Tactic | Technique |
-|--------|-----------|
-| Reconnaissance | Active Scanning |
-| Discovery | Network Service Discovery |
-
----
-
-<div align="center">
-
-## Stage Complete — Windows Active Directory Identified
-
-</div>
-
----
-
-# Phase 02 — Domain Discovery
-
-After confirming that the target exposed SMB services, authenticated negotiation information was used to identify the Active Directory domain.
-
----
+# 02 — Domain Discovery
 
 ## Objective
 
-Discover:
+Identify the domain name, hostname, SMB negotiation information, and authentication realm.
 
-- Domain Name.
-- Hostname.
-- SMB Signing Status.
-- SMB Version.
-- Authentication Realm.
+## Tool: CrackMapExec
 
----
-
-## Tool Used
-
-### CrackMapExec / NetExec
-
-CrackMapExec performs SMB negotiation without requiring credentials.
-
----
-
-## Command Executed
+The original command was:
 
 ```bash
 crackmapexec smb <TARGET-IP>
 ```
 
----
+This command performs SMB negotiation and reports information that can help identify the Windows host and its domain context.
 
-# Screenshot — SMB Domain Discovery
+## Screenshot — SMB Domain Discovery
 
-![SMB Discovery](assets/images/02-domain-discovery.png)
+<figure>
 
-> **Figure 2.2 — SMB negotiation exposing the Active Directory domain name and host information.**
+  <img src="assets/02-domain-discovery.png" alt="SMB domain discovery screenshot referenced by the original walkthrough">
 
----
+  <figcaption>Figure 2.2 — SMB negotiation and domain information. Expected path: docs/assets/02-domain-discovery.png.</figcaption>
 
-## Domain Intelligence Collected
+</figure>
+
+## Documented Results
 
 | Attribute | Value |
-|-----------|-------|
+|---|---|
 | Domain | `spookysec.local` |
 | Hostname | `ATTACKTIVEDIREC` |
-| SMB Signing | Enabled |
-| SMB Version | SMBv2 |
+| SMB signing | Enabled |
+| SMB version | SMBv2 |
 
----
+These values are preserved from the supplied walkthrough.
 
-## Why This Information Is Valuable
+## Why the Domain Matters
 
-The domain name becomes the Kerberos Realm used during authentication attacks.
+The discovered domain supplies the Kerberos realm and provides the naming context required by subsequent Active Directory enumeration tools.
 
-Future tools require:
+The investigation now had a documented domain name and a target for the next identity-enumeration stage.
 
-- Kerberos Realm.
-- Domain Controller address.
-- Username format.
+### Blue Team considerations
 
----
+SMB negotiation exposes information needed for legitimate interoperability, but it can also help an unauthenticated party profile a domain environment.
 
-## Authentication Context
+Defensive measures include limiting unnecessary network exposure, reviewing anonymous-access behavior where applicable, and monitoring unusual SMB connections.
 
-```text
-Domain
-   │
-   ▼
-spookysec.local
-   │
-   ▼
-Kerberos Realm
-   │
-   ▼
-KDC Authentication
-```
+**Stage outcome:** The original walkthrough identifies `spookysec.local` as the target domain.
 
-Without the domain name, Kerberos requests cannot be generated correctly.
-
----
-
-# Active Directory Intelligence Summary
-
-- Windows Server identified.
-- Domain Controller confirmed.
-- Kerberos Realm discovered.
-- Internal hostname exposed.
-- SMB security posture identified.
-
----
-
-## Blue Team Insight
-
-SMB negotiation metadata is legitimate functionality but provides attackers with valuable reconnaissance information.
-
-Organizations should:
-
-- Restrict anonymous SMB negotiation where possible.
-- Monitor SMB enumeration.
-- Audit SMB connection sources.
-
----
-
-<div align="center">
-
-## Stage Complete — Kerberos Realm Identified
-
-</div>
-
----
-
-# Phase 03 — Kerberos Username Enumeration
-
-The assessment now transitioned from infrastructure discovery into **identity reconnaissance**.
-
-Instead of guessing passwords, the objective became discovering **valid Active Directory users**.
-
----
+# 03 — Kerberos Username Enumeration
 
 ## Objective
 
-- Validate usernames.
-- Avoid password guessing.
-- Identify service accounts.
-- Build target list for AS-REP Roasting.
+Validate domain usernames and identify accounts for subsequent Kerberos testing.
 
----
+The original report identifies several accounts, including a service account and a backup account.
 
-# Kerberos Authentication Refresher
+## Tool: Kerbrute
 
-```text
-User
- │
- │ AS-REQ
- ▼
-Kerberos KDC
- │
- ├── Valid User
- └── Invalid User
-```
-
-The KDC responds differently depending on whether the username exists.
-
----
-
-## Why This Works
-
-Kerberos leaks identity information before authentication completes.
-
-Responses reveal:
-
-- User exists.
-- User disabled.
-- User invalid.
-
----
-
-## Tool Used — Kerbrute
-
-Kerbrute validates usernames directly against the Key Distribution Center.
-
----
-
-## Command Executed
+The documented command was:
 
 ```bash
 kerbrute userenum \
@@ -755,91 +493,60 @@ kerbrute userenum \
 --dc <TARGET-IP> users.txt
 ```
 
----
+### Command explanation
 
-## Screenshot — Username Enumeration
+- `userenum` selects username enumeration.
+- `-d spookysec.local` specifies the Active Directory domain.
+- `--dc <TARGET-IP>` identifies the Domain Controller.
+- `users.txt` supplies the candidate username list.
 
-![Kerberos Enumeration](assets/images/03-kerberos-user-enum.png)
+The command tests candidate names against Kerberos behavior. Response differences can disclose account existence or status, depending on server configuration and the responses returned.
 
-> **Figure 3.1 — Kerberos username validation against the Active Directory Domain Controller.**
+## Screenshot — Kerberos Enumeration
 
----
+<figure>
 
-## Enumeration Results
+  <img src="assets/03-kerberos-user-enum.png" alt="Kerbrute username enumeration screenshot referenced by the original walkthrough">
 
-Several usernames were validated successfully.
+  <figcaption>Figure 3.1 — Kerberos username enumeration. Expected path: docs/assets/03-kerberos-user-enum.png.</figcaption>
 
-### Representative Accounts
+</figure>
 
-| Username | Observation |
-|----------|-------------|
-| Administrator | Built-in Administrator |
-| svc-admin | Service Account |
-| backup | Backup Account |
-| james | Standard User |
-| robin | Standard User |
-| paradox | Standard User |
-| ori | Standard User |
-| darkstar | Standard User |
+## Representative Accounts
 
----
+| Username | Documented context |
+|---|---|
+| `Administrator` | Built-in administrative account |
+| `svc-admin` | Service account |
+| `backup` | Backup account |
+| `james` | Standard user |
+| `robin` | Standard user |
+| `paradox` | Standard user |
+| `ori` | Standard user |
+| `darkstar` | Standard user |
 
-## Service Account Discovery
+The original walkthrough reports these as representative accounts discovered during enumeration.
 
-The service account (`svc-admin`) immediately became a high-value target because service accounts commonly possess:
+## Why Service Accounts Matter
 
-- Elevated permissions.
-- Weak passwords.
-- Legacy Kerberos settings.
-- Automation privileges.
+Service accounts can be high-value targets when they have excessive permissions, weak passwords, legacy configuration, or credentials that are reused across services.
 
----
+The presence of a service account does not itself establish that the account is vulnerable. In this laboratory, `svc-admin` becomes a candidate for the next AS-REP Roasting stage.
 
-## Attack Surface Expansion
+## Identity Enumeration Detection
 
-```text
-Users.txt
-    │
-    ▼
-Kerberos Enumeration
-    │
-    ▼
-Valid Domain Users
-    │
-    ▼
-AS-REP Roast Candidates
-```
+Relevant Windows Security events include:
 
----
+| Event ID | Relevance |
+|---|---|
+| 4768 | Kerberos Ticket-Granting Ticket request |
+| 4771 | Kerberos preauthentication failure |
 
-## Security Impact
+These events require contextual analysis. A single event does not prove username enumeration; a high volume of requests, repeated account names, source-host context, and timing patterns can make the activity more suspicious.
 
-User enumeration dramatically reduces the password attack surface.
+### Sigma detection concept
 
-Instead of guessing usernames and passwords simultaneously, attackers only attack confirmed identities.
-
----
-
-# Detection Engineering Notes
-
-### Windows Event IDs
-
-| Event ID | Meaning |
-|----------|----------|
-| 4768 | Kerberos TGT Requested |
-| 4771 | Kerberos Authentication Failure |
-
----
-
-### Indicators
-
-- Hundreds of AS Requests.
-- Sequential usernames.
-- Unknown workstation requesting Kerberos tickets.
-
----
-
-### Sigma Detection Concept
+The source included the following illustrative rule:
 
 ```yaml
 title: Kerberos Username Enumeration
@@ -855,123 +562,56 @@ detection:
 condition: selection
 ```
 
----
+This is a basic event-selection example, not a production-ready detection. Event 4768 is generated during legitimate Kerberos authentication as well. An operational rule needs additional filters, enrichment, and thresholding to distinguish suspicious behavior from normal activity.
 
-## MITRE ATT&CK Mapping
+**Stage outcome:** The walkthrough identifies candidate domain accounts for subsequent credential-access testing.
 
-| Tactic | Technique |
-|--------|-----------|
-| Discovery | Account Discovery |
-| Reconnaissance | Gather Victim Identity Information |
-
----
-
-# Identity Reconnaissance Summary
-
-| Task | Status |
-|------|--------|
-| Kerberos Realm Identified | ✅ |
-| Valid Users Enumerated | ✅ |
-| Service Accounts Found | ✅ |
-| Backup Account Found | ✅ |
-| Target List Created | ✅ |
-
----
-
-<div align="center">
-
-# Reconnaissance Phase Complete
-
-**Infrastructure Mapped → Identity Infrastructure Discovered → Kerberos Attack Surface Identified**
-
-</div>
-
----
-
----
-
-# Credential Access — Kerberos Abuse & SMB Enumeration
-
-> *Identity attacks begin where authentication trust is weakest.*
-
-With valid Active Directory usernames identified during reconnaissance, the engagement transitioned into **Credential Access**. This phase abuses a Kerberos configuration weakness to obtain encrypted authentication material, cracks it offline, authenticates to SMB services, and recovers additional privileged credentials from enterprise backup storage.
-
-This represents one of the most common attack paths seen in Windows Active Directory environments.
-
----
-
-# Phase 04 — AS-REP Roasting
+# 04 — AS-REP Roasting
 
 ## Objective
 
-Identify domain accounts configured without **Kerberos Preauthentication** and recover AS-REP authentication material for offline password cracking.
+Determine whether a domain account is configured without Kerberos preauthentication and, if so, obtain authentication material that can be tested offline.
 
----
+## Vulnerability explanation
 
-## What is AS-REP Roasting?
+AS-REP Roasting targets accounts configured with the **Do not require Kerberos preauthentication** setting.
 
-AS-REP Roasting is a Kerberos attack that targets user accounts where **"Do not require Kerberos preauthentication"** is enabled.
+When preauthentication is disabled, the Key Distribution Center can return an AS-REP response without the client first proving knowledge of the account password. The returned encrypted material may be suitable for offline password guessing.
 
-Instead of validating knowledge of the password first, the Key Distribution Center immediately returns an encrypted authentication response.
+This does not mean that every Kerberos account is roastable. The relevant account configuration must permit the behavior.
 
-The attacker can then crack this response offline.
+## Authentication comparison
 
----
-
-## Kerberos Authentication Comparison
-
-### Normal Authentication
+**Normal preauthentication flow**
 
 ```text
 Client
-   │
-   │ AS-REQ + Preauthentication
-   ▼
+  |
+  | AS-REQ with preauthentication
+  v
 KDC
-   │
-   ▼
-AS-REP (Encrypted)
+  |
+  v
+AS-REP
 ```
 
-### Vulnerable Authentication
+**Account without required preauthentication**
 
 ```text
 Client
-   │
-   │ AS-REQ
-   ▼
+  |
+  | AS-REQ
+  v
 KDC
-   │
-   ▼
-AS-REP Returned Immediately
-   │
-   ▼
-Offline Password Cracking
+  |
+  | AS-REP response
+  v
+Offline password testing
 ```
 
----
+## Tool: Impacket GetNPUsers
 
-## Why This Misconfiguration Exists
-
-Organizations sometimes disable Kerberos preauthentication for:
-
-- Legacy applications.
-- Compatibility reasons.
-- Misconfigured service accounts.
-
-This exposes authentication material without requiring credentials.
-
----
-
-## Tool Used
-
-### Impacket — GetNPUsers
-
-Impacket requests AS-REP responses for users discovered during Kerberos enumeration.
-
----
-
-## Command Executed
+The original command was:
 
 ```bash
 GetNPUsers.py \
@@ -981,108 +621,62 @@ spookysec.local/ \
 -dc-ip <TARGET-IP>
 ```
 
----
+The command supplies the domain and a candidate-user list, requests AS-REP material where the account configuration permits it, and identifies responses that may be suitable for offline cracking.
 
-# Screenshot — AS-REP Enumeration
+## Screenshot — AS-REP Enumeration
 
-![ASREP Roasting](assets/images/04-asrep-enumeration.png)
+<figure>
 
-> **Figure 4.1 — Requesting Kerberos AS-REP responses for roastable Active Directory accounts.**
+  <img src="assets/04-asrep-enumeration.png" alt="AS-REP Roasting enumeration screenshot referenced by the original walkthrough">
 
----
+  <figcaption>Figure 4.1 — AS-REP enumeration. Expected path: docs/assets/04-asrep-enumeration.png.</figcaption>
 
-## Attack Analysis
+</figure>
 
-A vulnerable service account returned an encrypted Kerberos authentication response.
+## Redacted Authentication Material
 
-The response contains:
-
-- Kerberos encryption type.
-- Username.
-- Authentication material.
-
-### Redacted Example
+The source documents an AS-REP response associated with `svc-admin` and intentionally redacts its hash:
 
 ```text
 $krb5asrep$23$svc-admin@SPOOKYSEC.LOCAL:<REDACTED_HASH>
 ```
 
-Sensitive authentication material has been intentionally removed.
-
----
+No missing hash or password is reconstructed.
 
 ## Security Impact
 
-AS-REP roasting enables attackers to:
+When a weak password is used by an account without required preauthentication, an attacker may attempt password guesses offline without generating a corresponding Domain Controller authentication attempt for each guess.
 
-- Perform unlimited offline password cracking.
-- Avoid account lockouts.
-- Generate minimal authentication noise.
+The initial Kerberos requests remain observable, and the account configuration can be audited.
 
----
+## Detection and Mitigation
 
-## Blue Team Perspective
+Investigate:
 
-### Detection Opportunities
+- Accounts that do not require Kerberos preauthentication.
+- Unusual AS-REQ volumes or account-targeting patterns.
+- Service accounts with unnecessary legacy settings.
+- Requests from unusual hosts or unexpected network locations.
 
-| Event ID | Detection Purpose |
-|----------|-------------------|
-| 4768 | Kerberos Ticket Request |
-| 4771 | Kerberos Authentication Failure |
+Recommended controls include enabling preauthentication wherever compatible, auditing legacy exceptions, and enforcing strong service-account credential management.
 
-### Indicators
+### MITRE ATT&CK
 
-- Large numbers of AS Requests.
-- Requests without successful authentication.
-- Requests targeting multiple usernames.
+| Technique | ID | Evidence |
+|---|---|---|
+| AS-REP Roasting | T1558.004 | The documented AS-REP request and redacted response |
 
----
+**Stage outcome:** The source reports that a vulnerable service account returned encrypted Kerberos authentication material.
 
-## MITRE ATT&CK
-
-| Technique | ID |
-|-----------|----|
-| AS-REP Roasting | T1558.004 |
-
----
-
-<div align="center">
-
-## Stage Complete — Kerberos Authentication Material Obtained
-
-</div>
-
----
-
-# Phase 05 — Offline Password Cracking
+# 05 — Offline Password Cracking
 
 ## Objective
 
-Recover reusable credentials from the AS-REP authentication material without interacting with the Domain Controller.
+Test the recovered AS-REP material against a password dictionary without repeatedly authenticating to the Domain Controller.
 
----
+## Tool: Hashcat
 
-## Why Offline Cracking Matters
-
-Offline attacks eliminate:
-
-- Account lockouts.
-- Password attempt limits.
-- Authentication logging for every password guess.
-
-Only the initial AS-REP request is visible.
-
----
-
-## Tool Used
-
-### Hashcat
-
-Hashcat supports Kerberos AS-REP hashes using **Mode 18200**.
-
----
-
-## Command Executed
+The original command was:
 
 ```bash
 hashcat \
@@ -1091,115 +685,58 @@ hash.txt \
 passwords.txt
 ```
 
----
+| Argument | Purpose |
+|---|---|
+| `-m 18200` | Hashcat mode for Kerberos 5 AS-REP etype 23 |
+| `hash.txt` | File containing the captured hash |
+| `passwords.txt` | Dictionary used for offline password testing |
 
-## Hashcat Workflow
+The original report states that the password was recovered using a dictionary-based attack. The actual password is not present in the supplied material and is therefore not added.
 
-```text
-AS-REP Hash
-     │
-     ▼
-Hashcat
-     │
-     ▼
-Dictionary Attack
-     │
-     ▼
-Recovered Password
-```
+## Screenshot — Password Recovery
 
----
+<figure>
 
-# Screenshot — Password Recovery
+  <img src="assets/05-hashcat-crack.png" alt="Hashcat password recovery screenshot referenced by the original walkthrough">
 
-![Hashcat Password Recovery](assets/images/05-hashcat-crack.png)
+  <figcaption>Figure 5.1 — Offline password recovery. Expected path: docs/assets/05-hashcat-crack.png.</figcaption>
 
-> **Figure 5.1 — Offline recovery of the vulnerable service account password using Hashcat.**
+</figure>
 
----
+## Why the Attack Worked
 
-## Analysis
+The original walkthrough attributes the result to a weak, dictionary-compatible service-account password.
 
-The password was successfully recovered using a dictionary-based attack.
+Offline cracking does not send every candidate password to the Domain Controller. Consequently, normal online password-attempt controls and account-lockout mechanisms do not directly constrain each offline guess.
 
-### Why This Worked
+The initial acquisition of the AS-REP material can still be detected.
 
-Weak password policy.
+## Defensive Recommendations
 
-Characteristics included:
+- Use long, randomly generated service-account credentials.
+- Prefer Group Managed Service Accounts (gMSAs) where appropriate.
+- Audit accounts that do not require Kerberos preauthentication.
+- Reduce service-account privileges.
+- Rotate credentials after suspected exposure.
+- Monitor suspicious Kerberos requests and investigate weak-account configurations.
 
-- Predictable structure.
-- Dictionary-compatible word.
-- Service account credential reuse.
+### MITRE ATT&CK
 
----
+| Technique | ID | Evidence |
+|---|---|---|
+| Password Cracking | T1110.002 | The source documents an offline dictionary-based recovery workflow |
 
-## Password Security Discussion
+**Stage outcome:** The source reports successful recovery of the service-account password.
 
-Weak service account passwords remain a significant enterprise security issue.
-
-### Risks
-
-- Lateral movement.
-- Privilege escalation.
-- Kerberoasting.
-- Password spraying.
-
----
-
-## Blue Team Recommendations
-
-- Strong password policies.
-- Password rotation.
-- Service account management.
-- Managed Service Accounts (gMSA).
-
----
-
-## MITRE ATT&CK
-
-| Technique | ID |
-|-----------|----|
-| Password Cracking | T1110.002 |
-
----
-
-<div align="center">
-
-## Stage Complete — Service Account Credentials Recovered
-
-</div>
-
----
-
-# Phase 06 — Authenticated SMB Enumeration
+# 06 — Authenticated SMB Enumeration
 
 ## Objective
 
-Use the recovered service account credentials to enumerate accessible SMB shares.
+Use the recovered `svc-admin` credentials to enumerate accessible SMB shares and identify files relevant to further credential discovery.
 
----
+## Tool: NetExec / CrackMapExec
 
-## Enterprise Context
-
-SMB is frequently used for:
-
-- File servers.
-- Backup storage.
-- Administrative shares.
-- Group Policy distribution.
-
-Once valid credentials are obtained, SMB becomes an excellent source of sensitive information.
-
----
-
-## Tool Used
-
-### NetExec (CrackMapExec)
-
----
-
-## Command Executed
+The original authenticated enumeration command was:
 
 ```bash
 netexec smb <TARGET-IP> \
@@ -1208,383 +745,220 @@ netexec smb <TARGET-IP> \
 --shares
 ```
 
----
+The password remains redacted, as in the original material.
 
-# Screenshot — SMB Share Enumeration
+This command authenticates to SMB using the service-account credentials and requests the share list and associated access information.
 
-![SMB Enumeration](assets/images/06-smb-share-enum.png)
+## Screenshot — SMB Share Enumeration
 
-> **Figure 6.1 — Enumerating SMB shares using authenticated service account credentials.**
+<figure>
 
----
+  <img src="assets/06-smb-share-enum.png" alt="Authenticated SMB share enumeration screenshot referenced by the original walkthrough">
+
+  <figcaption>Figure 6.1 — SMB share enumeration. Expected path: docs/assets/06-smb-share-enum.png.</figcaption>
+
+</figure>
 
 ## Shares Identified
 
-| Share | Purpose |
-|-------|---------|
-| ADMIN$ | Administrative Share |
-| IPC$ | Named Pipes |
-| NETLOGON | Login Scripts |
-| SYSVOL | Group Policy Objects |
-| backup | Backup Storage |
+| Share | Documented purpose or relevance |
+|---|---|
+| `ADMIN$` | Administrative share |
+| `IPC$` | Named-pipe and interprocess communication access |
+| `NETLOGON` | Domain logon scripts and related resources |
+| `SYSVOL` | Group Policy and domain policy resources |
+| `backup` | Backup storage; selected for further investigation |
 
----
+The original report identifies `backup` as the primary investigation target.
 
-## Share Risk Assessment
+## Accessing the Backup Share
 
-| Share | Risk |
-|-------|------|
-| SYSVOL | Login scripts & GPOs |
-| NETLOGON | Authentication resources |
-| backup | Sensitive backup artifacts |
-
-The **backup** share became the primary investigation target.
-
----
-
-## SMB Enumeration Checklist
-
-- [x] Enumerate accessible shares.
-- [x] Verify permissions.
-- [x] Browse contents.
-- [x] Download backup files.
-
----
-
-## Accessing Backup Share
-
-### SMBClient Command
+The documented command was:
 
 ```bash
 smbclient //<TARGET-IP>/backup
 ```
 
----
+The original material then describes browsing the share and retrieving backup files. It does not provide a literal file listing or exact filename, so neither is invented here.
 
 ## Why Backup Shares Matter
 
-Organizations frequently store:
+Backup locations may contain sensitive configuration data, credential exports, automation scripts, or other artifacts that are accessible to users who do not require them.
 
-- Credential exports.
-- Password backups.
-- Configuration files.
-- Automation scripts.
-- Service account secrets.
+The security impact depends on the actual file contents and the permissions assigned to the share.
 
----
-
-## Blue Team Detection
-
-### Windows Event IDs
+## SMB Monitoring
 
 | Event ID | Description |
-|----------|-------------|
-| 5140 | Network Share Access |
-| 5145 | SMB Object Access |
+|---|---|
+| 5140 | A network share was accessed |
+| 5145 | A network share object was checked for client access |
 
-Monitor:
+Useful investigation context includes the authenticated account, source address, share name, file path, access type, and whether the activity matches the account's normal behavior.
 
-- Administrative shares.
-- Backup shares.
-- Unusual workstation access.
+### MITRE ATT&CK
 
----
+| Technique | ID | Evidence |
+|---|---|---|
+| SMB / Windows Admin Shares | T1021.002 | The original report documents authenticated SMB enumeration and remote share access |
 
-## MITRE ATT&CK
+The exact ATT&CK technique depends on the activity being classified. Ordinary SMB share enumeration and the use of SMB for lateral movement are related but not identical behaviors.
 
-| Technique | ID |
-|-----------|----|
-| SMB / Windows Admin Shares | T1021.002 |
+**Stage outcome:** The source reports that a sensitive backup share was located and accessed.
 
----
-
-<div align="center">
-
-## Stage Complete — Sensitive Backup Share Located
-
-</div>
-
----
-
-# Phase 07 — Backup Credential Discovery
+# 07 — Backup Credential Discovery
 
 ## Objective
 
-Recover additional credentials stored inside enterprise backup files.
+Inspect the backup material and determine whether it contains additional credentials.
 
----
+## Documented finding
 
-## Backup File Analysis
+The original report states that a backup file contained Base64-encoded credentials. The encoding was reversible and did not provide confidentiality.
 
-The backup share contained a credential backup file encoded using Base64.
+## Screenshot — Backup Credential File
 
-Although encoded, it was not encrypted.
+<figure>
 
----
+  <img src="assets/07-backup-credential-decode.png" alt="Backup credential decoding screenshot referenced by the original walkthrough">
 
-# Screenshot — Backup Credential File
+  <figcaption>Figure 7.1 — Backup credential recovery. Expected path: docs/assets/07-backup-credential-decode.png.</figcaption>
 
-![Backup Credentials](assets/images/07-backup-credential-decode.png)
+</figure>
 
-> **Figure 7.1 — Encoded backup credential recovered from an SMB share.**
+## Base64 Decoding
 
----
-
-## Base64 Recovery Workflow
-
-### Decode Using Base64
+The original command was:
 
 ```bash
 echo "<REDACTED_BASE64>" | base64 -d
 ```
 
----
+The encoded value is intentionally redacted in the source.
 
-### Alternative Method
+CyberChef was also documented as an alternative way to decode Base64 data.
 
-CyberChef may also decode Base64 safely during investigations.
+## Why Base64 Is Not Encryption
 
----
+Base64 transforms binary or textual data into a printable representation. It does not require a secret key and does not prevent a reader from recovering the original contents.
 
-## Analysis
+Anyone who can read the file may be able to decode it.
 
-Recovered information included:
+## Security Impact
 
-- Backup username.
-- Backup password.
+The original walkthrough reports recovery of a backup username and password. It does not supply their literal values, so the credentials remain undisclosed.
 
-Sensitive values remain redacted.
+## Defensive Recommendations
 
----
+- Do not store plaintext passwords, API keys, or tokens in readable backup files.
+- Encrypt sensitive backup data with managed keys.
+- Restrict share access using least-privilege ACLs.
+- Audit and monitor sensitive file access.
+- Rotate credentials if exposure is suspected.
+- Move secrets into a suitable secrets-management system rather than storing them in ordinary files.
 
-## Why Base64 is Dangerous
+### MITRE ATT&CK
 
-Base64 provides:
+| Technique | ID | Evidence |
+|---|---|---|
+| Credentials in Files | T1552.001 | The source describes credentials recovered from an encoded backup file |
 
-- Encoding.
-- Formatting.
+**Stage outcome:** The walkthrough reports recovery of backup-account credentials.
 
-It **does not provide confidentiality**.
+# 08 — Backup Account Security Analysis
 
-Anyone with read access can recover the contents instantly.
+The source describes the recovered `backup` account as having elevated directory permissions that enabled the next stage of the attack.
 
----
+The account name alone does not prove that it belongs to the Backup Operators group or possesses replication rights. The material specifically attributes the escalation opportunity to Active Directory replication permissions.
 
-## Enterprise Security Lessons
+## Replication Permissions
 
-Never store:
+| Permission | Security relevance |
+|---|---|
+| Replicating Directory Changes | Allows qualifying directory replication operations |
+| Replicating Directory Changes All | Can allow replication of sensitive secret attributes |
+| Directory replication access | Must be carefully restricted and audited |
 
-- Passwords.
-- Tokens.
-- Secrets.
-- API Keys.
-- Service Account Credentials.
-
-inside readable backup locations.
-
----
-
-## Blue Team Recommendations
-
-- Encrypt backups.
-- Remove plaintext credentials.
-- Restrict SMB permissions.
-- Monitor backup share access.
-
----
-
-## MITRE ATT&CK
-
-| Technique | ID |
-|-----------|----|
-| Credentials in Files | T1552.001 |
-
----
-
-<div align="center">
-
-## Stage Complete — Backup Account Credentials Recovered
-
-</div>
-
----
-
-# Phase 08 — Backup Account Security Analysis
-
-The recovered backup account possessed elevated directory permissions that exceeded ordinary user privileges.
-
-This became the privilege escalation vector.
-
----
-
-## Why Backup Accounts Are High Value Targets
-
-Backup accounts commonly receive permissions including:
-
-- Backup Operators.
-- Replication Rights.
-- Read access to directory secrets.
-- Synchronization privileges.
-
----
-
-## Active Directory Replication Permissions
-
-Important permissions include:
-
-| Permission | Security Impact |
-|-----------|-----------------|
-| Replicating Directory Changes | Directory Synchronization |
-| Replicating Directory Changes All | NTDS Credential Replication |
-
-These permissions enable **DCSync**.
-
----
+An account with sufficient directory replication privileges can request directory data without having to execute code directly on the Domain Controller.
 
 ## Attack Preview
 
 ```text
 Backup Credentials
-       │
-       ▼
-Directory Replication Permissions
-       │
-       ▼
-SecretsDump
-       │
-       ▼
-Administrator NTLM Hash
+        |
+        v
+Replication Permission Abuse
+        |
+        v
+DCSync Request
+        |
+        v
+Domain Credential Material
 ```
 
----
+## Defensive Review
 
-## Detection Engineering Preview
+Review the principals granted directory replication rights and confirm that each grant is necessary.
 
-Blue Teams should monitor:
+Investigate replication operations originating from accounts or systems that are not expected to perform Domain Controller replication. Event 4662 can provide useful evidence when the relevant directory auditing is configured.
 
-- Event ID 4662.
-- Replication requests.
-- DRSUAPI traffic.
-- Backup account privilege usage.
+**Stage outcome:** The source identifies directory replication permissions as the privilege-escalation path.
 
----
-
-<div align="center">
-
-# Credential Access Phase Complete
-
-**Kerberos Compromised → Credentials Recovered → Backup Account Identified**
-
-</div>
-
----
----
-
-# Domain Privilege Escalation — Active Directory Compromise
-
-> *The engagement transitions from credential access into complete domain compromise by abusing Active Directory replication privileges.*
-
-At this stage, authenticated access to the **backup** account had already been established through SMB credential recovery. The backup account possessed directory replication permissions, allowing the attacker to impersonate a Domain Controller and synchronize password hashes directly from the Active Directory database.
-
-This technique is widely known as **DCSync** and is one of the highest-impact Active Directory attacks.
-
----
-
-# Phase 09 — DCSync Privilege Escalation
+# 09 — DCSync Privilege Escalation
 
 ## Objective
 
-Abuse Active Directory replication permissions assigned to the backup account to retrieve NTDS password hashes from the Domain Controller.
-
----
+Use the backup account's documented replication permissions to request Active Directory credential material through the directory replication protocol.
 
 ## Understanding DCSync
 
-Active Directory Domain Controllers continuously replicate objects using the **Directory Replication Service (DRSUAPI)**.
+Domain Controllers replicate directory objects using Active Directory replication mechanisms. DCSync abuses the replication interface when an account has sufficient rights to request sensitive directory data.
 
-If an account has replication rights, it can request password hashes for every user in the domain.
+Unlike an attack that dumps LSASS memory on the Domain Controller, DCSync can retrieve replicated secrets remotely without requiring code execution on that server.
 
-### Replication Attack Flow
+## Replication Attack Flow
 
 ```text
-Backup Account
-      │
-      │ Authenticated DRSUAPI Request
-      ▼
+Authenticated Backup Account
+          |
+          v
+Directory Replication Request
+          |
+          v
 Domain Controller
-      │
-      │ Directory Replication
-      ▼
-NTDS Credential Database
-      │
-      ▼
-Password Hashes Returned
+          |
+          v
+Directory Credential Material
+          |
+          v
+NTLM Hashes / Kerberos Keys
 ```
 
-Unlike LSASS dumping, **DCSync does not require code execution on the Domain Controller**.
+## Tool: Impacket SecretsDump
 
----
-
-## Why Replication Permissions Are Dangerous
-
-The backup account possessed permissions equivalent to:
-
-| Permission                        | Security Impact               |
-| --------------------------------- | ----------------------------- |
-| Replicating Directory Changes     | Read directory changes        |
-| Replicating Directory Changes All | Replicate password secrets    |
-| Directory Synchronization         | Domain-wide credential access |
-
-These permissions effectively allow an attacker to behave like another Domain Controller.
-
----
-
-## Attack Surface Analysis
-
-### High-Risk Active Directory Permissions
-
-| Group / Permission | Risk              |
-| ------------------ | ----------------- |
-| Domain Admins      | Full compromise   |
-| Enterprise Admins  | Forest compromise |
-| Backup Operators   | Sensitive backups |
-| Replication Rights | NTDS extraction   |
-
----
-
-## Tool Used — Impacket SecretsDump
-
-Impacket's `SecretsDump.py` performs DCSync by requesting password replication through DRSUAPI.
-
-### Command Executed
+The original command was:
 
 ```bash
 secretsdump.py spookysec.local/backup:<REDACTED_PASSWORD>@<TARGET-IP>
 ```
 
----
+The command authenticates to the domain using the backup account and attempts the documented credential-extraction operation.
 
-# Screenshot — NTDS Extraction
+The password and target IP remain redacted or represented by placeholders, matching the source material.
 
-![NTDS Extraction](assets/images/08-ntds-dump.png)
+## Screenshot — NTDS Credential Extraction
 
-*Figure 9.1 — SecretsDump synchronizing credential material from the Active Directory database using replication permissions.*
+<figure>
 
----
+  <img src="assets/08-ntds-dump.png" alt="SecretsDump credential extraction screenshot referenced by the original walkthrough">
 
-## SecretsDump Analysis
+  <figcaption>Figure 9.1 — DCSync and directory credential extraction. Expected path: docs/assets/08-ntds-dump.png.</figcaption>
 
-The operation successfully extracted:
-
-* NTLM password hashes.
-* Kerberos AES keys.
-* Machine account hashes.
-* Administrator authentication material.
-* Service account credential hashes.
-
----
+</figure>
 
 ## Redacted Output Example
+
+The source provides the following illustrative output:
 
 ```text
 Administrator:500:<LM_HASH>:<REDACTED_NTLM_HASH>
@@ -1594,180 +968,106 @@ backup:1104:<LM_HASH>:<REDACTED_NTLM_HASH>
 svc-admin:1105:<LM_HASH>:<REDACTED_NTLM_HASH>
 ```
 
-> **Important:** All hashes have been intentionally removed from this public portfolio.
+All sensitive hashes remain redacted.
 
----
+The original report describes the extracted material as including NTLM hashes, Kerberos AES keys, machine-account hashes, Administrator authentication material, and service-account credential hashes. The exact output is not reproduced because the underlying values were not supplied.
 
-## Why NTDS.dit Is Critical
+## Why Replication Abuse Is Critical
 
-The **NTDS** database stores identity secrets for the entire Active Directory domain.
+An account with unauthorized replication rights can gain access to credential material for many domain identities. The resulting impact may extend well beyond the account initially compromised.
 
-### Credential Types Stored
+The term **NTDS extraction** is used in the original walkthrough to describe the acquisition of Active Directory secrets. DCSync is specifically the replication-based technique; it should not be confused with copying the `NTDS.dit` database file from disk.
 
-| Secret            | Description                     |
-| ----------------- | ------------------------------- |
-| NTLM Hashes       | Windows authentication material |
-| Kerberos Keys     | AES128 / AES256 secrets         |
-| Machine Passwords | Computer accounts               |
-| Service Accounts  | Authentication secrets          |
+## Detection Engineering
 
-Compromise of NTDS effectively compromises the domain.
+### Windows Event ID 4662
 
----
-
-## Red Team Observation
-
-DCSync is often preferred over LSASS dumping because:
-
-* Remote execution not required.
-* No memory dumping.
-* Lower operational footprint.
-* Native replication protocol abuse.
-
----
-
-## Blue Team Detection Engineering
-
-### Windows Event IDs
-
-| Event ID | Description                        |
-| -------- | ---------------------------------- |
-| 4662     | Directory Replication              |
-| 4672     | Privileged Authentication          |
-| 4624     | Successful Authentication          |
-| 4688     | SecretsDump Execution *(if local)* |
-
----
-
-### Indicators of DCSync
+Event 4662 can record operations performed on Active Directory objects when appropriate auditing and SACL configuration are in place.
 
 Investigate:
 
-* Replication requests from non-Domain Controllers.
-* User accounts performing directory replication.
-* DRSUAPI network traffic.
-* Replication originating from workstations.
+- Directory replication operations performed by unexpected accounts.
+- Replication-related access from non-Domain Controller systems.
+- Sensitive replication permissions granted to service or backup accounts.
+- Changes to directory ACLs that grant replication privileges.
 
----
+Additional authentication events and network telemetry can help establish the source and scope of the activity.
 
-## MITRE ATT&CK Mapping
+### MITRE ATT&CK
 
-| Technique | ID            |
-| --------- | ------------- |
-| DCSync    | **T1003.006** |
+| Technique | ID | Evidence |
+|---|---|---|
+| DCSync | T1003.006 | The documented SecretsDump replication workflow |
 
----
+**Stage outcome:** The source reports successful extraction of domain credential material using the backup account.
 
-<div align="center">
-
-## Domain Credential Database Successfully Accessed
-
-</div>
-
----
-
-# Phase 10 — Administrator NTLM Hash Analysis
+# 10 — Administrator NTLM Hash Analysis
 
 ## Objective
 
-Understand how NTLM authentication material enables administrator authentication without recovering plaintext passwords.
+Explain how recovered NTLM authentication material can be used without first recovering the corresponding plaintext password.
 
----
+## NTLM Authentication Context
 
-## NTLM Authentication Overview
+NTLM uses challenge-response authentication. The hash is derived from the account password and may serve as reusable authentication material in scenarios where Pass-the-Hash is supported.
 
-Windows stores passwords as NTLM hashes.
-
-Authentication compares hashes rather than transmitting passwords.
-
-### NTLM Authentication Model
+A simplified conceptual flow is:
 
 ```text
-Password
-   │
-   ▼
+Account Password
+       |
+       v
 NTLM Hash
-   │
-   ▼
-Authentication Challenge
-   │
-   ▼
+       |
+       v
+Challenge-Response Authentication
+       |
+       v
 Authenticated Session
 ```
 
----
+The hash is not the plaintext password, and a successful Pass-the-Hash operation does not establish that the original password has been recovered.
 
-## Why Pass-the-Hash Works
-
-Instead of recovering:
-
-* Password
-
-Attackers reuse:
-
-* NTLM Hash
-
-This bypasses password knowledge entirely.
-
----
-
-## Authentication Material Recovered
-
-Sensitive values removed.
+## Redacted Administrator Material
 
 ```text
 Administrator
-NTLM : <REDACTED_HASH>
+NTLM: <REDACTED_HASH>
 
 Backup
-NTLM : <REDACTED_HASH>
+NTLM: <REDACTED_HASH>
 ```
 
----
+## Security Impact
 
-## Enterprise Security Impact
+Reusable NTLM material can enable authentication to services and systems that accept the relevant NTLM authentication mechanism and permissions.
 
-NTLM hashes allow authentication against:
+The original report identifies SMB and WinRM as relevant services in the attack chain. Other remote-management mechanisms may also accept NTLM in appropriate configurations, but their use was not documented as part of this particular sequence.
 
-* SMB.
-* WinRM.
-* WMI.
-* PsExec.
-* RPC.
+## Defensive Controls
 
-without revealing plaintext passwords.
+- Restrict NTLM where operationally feasible.
+- Prefer Kerberos and modern authentication mechanisms.
+- Protect credential material using supported Windows credential protections.
+- Reduce privileged account exposure.
+- Review authentication logs for unusual use of privileged identities.
+- Rotate compromised credentials and investigate affected sessions.
 
----
+**Stage outcome:** The original report identifies Administrator NTLM material as the basis for the next authentication step.
 
-## Defensive Observation
-
-Organizations should restrict NTLM authentication whenever possible and prioritize Kerberos.
-
----
-
-# Phase 11 — Pass-the-Hash Authentication
+# 11 — Pass-the-Hash Authentication
 
 ## Objective
 
-Authenticate to Windows Remote Management using the Administrator NTLM hash.
+Authenticate as Administrator using the recovered NTLM hash and establish the remote PowerShell access documented in the source.
 
----
+## Why WinRM Matters
 
-## Why WinRM?
+Windows Remote Management supports remote administration and PowerShell remoting. When exposed and permitted by account policy, it can provide a direct path to administrative access.
 
-WinRM provides:
+## Tool: Evil-WinRM
 
-* Remote PowerShell.
-* Administrative automation.
-* Enterprise server management.
-
-The service was exposed during reconnaissance.
-
----
-
-## Tool Used — Evil-WinRM
-
-### Command Executed
+The original command was:
 
 ```bash
 evil-winrm \
@@ -1776,33 +1076,23 @@ evil-winrm \
 -H <REDACTED_NTLM_HASH>
 ```
 
----
+The `-i` option identifies the target, `-u` selects the username, and `-H` supplies the NTLM hash.
 
-# Screenshot — Administrator Shell
+The hash is intentionally redacted.
 
-![Administrator Shell](assets/images/09-administrator-shell.png)
+## Screenshot — Administrator Shell
 
-*Figure 11.1 — Successful Pass-the-Hash authentication resulting in an interactive Administrator PowerShell session.*
+<figure>
 
----
+  <img src="assets/09-administrator-shell.png" alt="Evil-WinRM Administrator shell screenshot referenced by the original walkthrough">
 
-## Authentication Result
+  <figcaption>Figure 11.1 — Administrator remote session. Expected path: docs/assets/09-administrator-shell.png.</figcaption>
 
-Administrative PowerShell access was successfully established.
+</figure>
 
-### Capabilities Obtained
+## Validation Commands
 
-* PowerShell execution.
-* Administrative filesystem access.
-* User enumeration.
-* Privileged group enumeration.
-* Domain administration.
-
----
-
-## Administrator Verification
-
-Useful validation commands include:
+The original report lists these commands for checking the session and privilege context:
 
 ```powershell
 whoami
@@ -1812,70 +1102,49 @@ whoami /groups
 whoami /priv
 ```
 
-These commands confirmed administrative privileges inside the Domain Controller environment.
+| Command | Purpose |
+|---|---|
+| `whoami` | Displays the current security identity |
+| `hostname` | Displays the local computer name |
+| `systeminfo` | Displays system information |
+| `whoami /groups` | Lists groups associated with the current token |
+| `whoami /priv` | Lists privileges associated with the current token |
 
----
+The original walkthrough reports that administrative PowerShell access was established.
 
-## Enterprise Security Notes
+## MITRE ATT&CK
 
-WinRM is frequently targeted because administrators commonly enable PowerShell remoting across servers.
+| Technique | ID | Evidence |
+|---|---|---|
+| Pass the Hash | T1550.002 | The documented Evil-WinRM command supplies an NTLM hash |
+| Windows Remote Management | T1021.006 | WinRM is the documented remote-access mechanism |
 
----
-
-## MITRE ATT&CK Mapping
-
-| Technique       | ID            |
-| --------------- | ------------- |
-| Pass-the-Hash   | **T1550.002** |
-| Remote Services | **T1021**     |
-
----
+The source used the broader ID `T1021` for remote services. The more specific WinRM mapping above reflects the documented mechanism.
 
 ## Detection Opportunities
 
-### Windows Event IDs
+Relevant telemetry includes:
 
-| Event ID | Description                     |
-| -------- | ------------------------------- |
-| 4624     | Successful WinRM Authentication |
-| 4648     | Explicit Credentials Used       |
-| 4688     | PowerShell Process              |
-| 4104     | Script Block Logging            |
+- Successful logons and logon type.
+- Authentication package and NTLM usage.
+- Source workstation and source address.
+- WinRM operational logs.
+- PowerShell process creation and script-block logging.
+- Privileged logon events.
 
----
+Event 4624 and event 4672 can help establish the authentication and privilege context. Event 4648 is relevant when explicit credentials are used, but it is not guaranteed to be generated for every Pass-the-Hash workflow.
 
-### PowerShell Logging Recommendations
+**Stage outcome:** The source reports successful Administrator authentication through a remote PowerShell session.
 
-Enable:
-
-* Module Logging.
-* Script Block Logging.
-* Transcription.
-* AMSI.
-
----
-
-<div align="center">
-
-## Administrator Authentication Successfully Completed
-
-</div>
-
----
-
-# Phase 12 — Post Exploitation
+# 12 — Post-Exploitation Validation
 
 ## Objective
 
-Validate administrative access without establishing persistence.
+Verify the privilege context and the target system without creating persistence or making additional changes to the environment.
 
-This walkthrough intentionally avoids persistence mechanisms and focuses on verification.
+## System and User Enumeration
 
----
-
-## Initial Enumeration
-
-Useful commands include:
+The original walkthrough lists the following commands:
 
 ```powershell
 hostname
@@ -1886,17 +1155,11 @@ net users
 net localgroup administrators
 ```
 
-Purpose:
-
-* Verify privilege level.
-* Confirm Domain Controller.
-* Enumerate administrative groups.
-
----
+These commands provide information about the computer, operating system, network configuration, local users, and local Administrators group.
 
 ## Active Directory Enumeration
 
-Potential PowerShell commands include:
+The original report also lists:
 
 ```powershell
 Get-ADUser
@@ -1904,322 +1167,234 @@ Get-ADComputer
 Get-ADGroup
 ```
 
-These commands demonstrate Active Directory visibility from an administrative context.
-
----
+These are Active Directory PowerShell cmdlets. Their availability depends on the installed tools and modules and the current environment.
 
 ## Access Validation
 
-Administrator privileges provided access to protected directories belonging to privileged users.
+The source describes access to protected directories associated with privileged users, including:
 
-Examples include:
+- Administrator Desktop.
+- Backup User Desktop.
+- Service Account Desktop.
 
-* Administrator Desktop.
-* Backup User Desktop.
-* Service Account Desktop.
+No additional filenames or file contents are invented.
 
----
+## Persistence and Change Policy
 
-## Operational Security Notes
+The original walkthrough states that no persistence was established. Specifically, it reports that the assessment did not:
 
-No persistence was created.
+- Create users.
+- Modify groups.
+- Install services.
+- Schedule tasks.
+- Change registry keys.
 
-The assessment did **not**:
+The stated objective was to verify administrative access, not to maintain access after the assessment.
 
-* Create users.
-* Modify groups.
-* Install services.
-* Schedule tasks.
-* Change registry keys.
+**Stage outcome:** Domain Administrator access was reported as successfully verified.
 
----
+# 13 — Challenge Completion
 
-## Objective Achieved
+The original documentation reports that the room concluded after retrieving three challenge flags corresponding to different privilege levels.
 
-Domain Administrator access successfully verified.
+## Screenshot — Challenge Completion
 
----
+<figure>
 
-<div align="center">
+  <img src="assets/10-flag-redacted.png" alt="Challenge completion screenshot with flags intentionally redacted">
 
-## Administrative Objectives Completed
+  <figcaption>Figure 13.1 — Challenge completion evidence with flag values redacted. Expected path: docs/assets/10-flag-redacted.png.</figcaption>
 
-</div>
+</figure>
 
----
+## Flag Verification Status
 
-# Phase 13 — Challenge Completion (Redacted)
+| Challenge objective | Reported status |
+|---|---|
+| User flag | Retrieved |
+| Privilege-escalation flag | Retrieved |
+| Root / Administrator flag | Retrieved |
 
-The room concludes after retrieving three challenge flags representing different privilege levels.
-
----
-
-# Screenshot — Challenge Completion
-
-![Flags Redacted](assets/images/10-flag-redacted.png)
-
-*Figure 13.1 — Successful completion of the room with challenge flags intentionally hidden.*
-
----
-
-## Flag Verification
-
-| Challenge Objective       | Status      |
-| ------------------------- | ----------- |
-| User Flag                 | ✅ Retrieved |
-| Privilege Escalation Flag | ✅ Retrieved |
-| Root / Administrator Flag | ✅ Retrieved |
-
----
-
-## Public Portfolio Policy
-
-Challenge flags are intentionally hidden.
+The original document intentionally redacts flag values. No flag has been reconstructed.
 
 ```text
 THM{************************}
 ```
 
-This preserves educational value while preventing plagiarism.
+The redaction preserves the public portfolio's educational value without disclosing the challenge answers.
 
----
+# End-to-End Attack Timeline
 
-# Attack Timeline Summary
-
-## End-to-End Attack Chain
+The full documented progression is summarized below.
 
 ```text
-Nmap Enumeration
-        │
-        ▼
-Domain Discovery
-        │
-        ▼
-Kerberos Enumeration
-        │
-        ▼
-AS-REP Roasting
-        │
-        ▼
-Password Recovery
-        │
-        ▼
-SMB Enumeration
-        │
-        ▼
-Backup Credential Discovery
-        │
-        ▼
-DCSync Privilege Escalation
-        │
-        ▼
-Administrator NTLM Hash
-        │
-        ▼
-Pass-the-Hash
-        │
-        ▼
-Administrator PowerShell
-        │
-        ▼
-Challenge Complete
+01. Nmap Enumeration
+          |
+          v
+02. Domain Discovery
+          |
+          v
+03. Kerberos Username Enumeration
+          |
+          v
+04. AS-REP Roasting
+          |
+          v
+05. Offline Password Recovery
+          |
+          v
+06. Authenticated SMB Enumeration
+          |
+          v
+07. Backup Credential Discovery
+          |
+          v
+08. Replication Permission Analysis
+          |
+          v
+09. DCSync Credential Extraction
+          |
+          v
+10. Administrator NTLM Hash Analysis
+          |
+          v
+11. Pass-the-Hash Authentication
+          |
+          v
+12. Administrator Session Validation
+          |
+          v
+13. Challenge Completion
 ```
 
----
+## Reported Success Metrics
 
-# Red Team Success Metrics
+| Objective | Source-reported result |
+|---|---|
+| Active Directory identified | Completed |
+| Kerberos realm discovered | Completed |
+| Valid users identified | Completed |
+| Roastable account found | Completed |
+| Password recovered offline | Completed |
+| SMB shares enumerated | Completed |
+| Backup credentials recovered | Completed |
+| Replication permissions abused | Completed |
+| Domain credential material extracted | Completed |
+| Administrator authentication established | Completed |
+| Challenge flags retrieved | Completed; values redacted |
 
-| Objective                      | Result |
-| ------------------------------ | ------ |
-| Active Directory Identified    | ✅      |
-| Kerberos Realm Enumerated      | ✅      |
-| Valid Users Identified         | ✅      |
-| Roastable Account Found        | ✅      |
-| Password Cracked Offline       | ✅      |
-| SMB Credentials Recovered      | ✅      |
-| Replication Permissions Abused | ✅      |
-| NTDS Hashes Extracted          | ✅      |
-| Administrator Authentication   | ✅      |
-| Challenge Completed            | ✅      |
+These are the outcomes reported by the supplied walkthrough, not independently verified results.
 
----
+# MITRE ATT&CK Mapping
 
-<div align="center">
+The following table consolidates the mappings from the original documentation and clarifies the relationship between each technique and the documented activity.
 
-# Domain Compromise Successfully Achieved
+| Technique | ID | Evidence |
+|---|---|---|
+| Active Scanning | T1595 | Nmap network reconnaissance |
+| Network Service Discovery | T1046 | TCP port and service enumeration |
+| Account Discovery | T1087 | Kerberos username enumeration |
+| AS-REP Roasting | T1558.004 | Kerberos AS-REP material requested |
+| Password Cracking | T1110.002 | Offline dictionary-based password recovery |
+| Credentials in Files | T1552.001 | Backup credential file described in the walkthrough |
+| DCSync | T1003.006 | SecretsDump replication workflow |
+| Pass the Hash | T1550.002 | Authentication using an NTLM hash |
+| SMB / Windows Admin Shares | T1021.002 | SMB access documented during the investigation |
+| Windows Remote Management | T1021.006 | Evil-WinRM remote session |
+| PowerShell | T1059.001 | PowerShell administration and validation commands |
 
-**Credential Access → Privilege Escalation → Domain Administrator**
+The original report also used the broader `T1021` mapping for remote services. The specific WinRM technique is listed above because the documented remote-access mechanism was WinRM.
 
-</div>
+MITRE ATT&CK classifications should be interpreted in context. A tool being present does not by itself establish that every possible technique associated with it occurred.
 
----
+# Detection Engineering
 
----
+> Every offensive technique in this assessment presents an opportunity for defenders to correlate identity, endpoint, and network telemetry.
 
-# 🛡️ Detection Engineering & Blue Team Analysis
+The detection portion of the original report focuses on the same attack progression: Kerberos reconnaissance, AS-REP requests, SMB access, backup credential discovery, directory replication, and privileged remote administration.
 
-> *Every offensive technique leaves defensive evidence.*
-
-The final phase of this assessment transitions from attacker methodology into **Detection Engineering**. Each attack performed during the engagement is mapped to Windows telemetry, MITRE ATT&CK, Indicators of Compromise (IOCs), Sigma detection ideas, and Microsoft security monitoring recommendations.
-
-This section is written from the perspective of a **SOC Analyst** investigating an Active Directory compromise.
-
----
-
-# Detection Engineering Overview
+A mature SOC should correlate these activities into a single investigation rather than treating every event as an isolated alert.
 
 ## SOC Investigation Timeline
 
 ```text
-Reconnaissance Detected
-          │
-          ▼
 Kerberos Enumeration
-          │
-          ▼
-AS-REP Ticket Requests
-          │
-          ▼
-Password Cracking (Offline)
-          │
-          ▼
-SMB Share Access
-          │
-          ▼
-Credential Discovery
-          │
-          ▼
-DCSync Replication Activity
-          │
-          ▼
-Administrator WinRM Logon
-          │
-          ▼
-PowerShell Administrative Session
+          |
+          v
+AS-REP Requests
+          |
+          v
+Authenticated SMB Access
+          |
+          v
+Sensitive Backup File Access
+          |
+          v
+Directory Replication Activity
+          |
+          v
+Privileged WinRM Logon
+          |
+          v
+PowerShell Administration
 ```
 
-A mature SOC should correlate these independent events into a single Active Directory compromise investigation.
+# Windows Security Event Reference
 
----
+The following event IDs appeared in the original report. Their interpretation depends on audit configuration, event details, and supporting telemetry.
 
-# MITRE ATT&CK Coverage Matrix
+| Event ID | Meaning | Investigation relevance |
+|---:|---|---|
+| 4624 | Successful logon | Establish the account, source, logon type, and authentication context |
+| 4625 | Failed logon | Investigate repeated failures and suspicious authentication patterns |
+| 4648 | Logon attempted using explicit credentials | Correlate explicit-credential use with other activity |
+| 4662 | Operation performed on an Active Directory object | Investigate directory access and possible replication abuse when auditing is configured |
+| 4672 | Special privileges assigned to a new logon | Establish the privilege context of a session |
+| 4688 | Process creation | Investigate suspicious process execution where auditing is enabled |
+| 4768 | Kerberos TGT requested | Investigate unusual Kerberos authentication requests |
+| 4769 | Kerberos service ticket requested | Investigate service-ticket patterns and unusual service access |
+| 4771 | Kerberos preauthentication failed | Investigate authentication failures and suspicious account-targeting patterns |
+| 5140 | Network share accessed | Investigate share access and source context |
+| 5145 | Network share object checked for access | Investigate access to sensitive files and directories |
 
-## Enterprise ATT&CK Mapping
+The original report also references PowerShell event 4104 for script-block logging. This is useful when PowerShell logging is configured and the relevant events are collected.
 
-| ATT&CK Tactic     | Technique                  | Technique ID  |
-| ----------------- | -------------------------- | ------------- |
-| Reconnaissance    | Active Scanning            | T1595         |
-| Discovery         | Network Service Discovery  | T1046         |
-| Discovery         | Account Discovery          | T1087         |
-| Credential Access | AS-REP Roasting            | **T1558.004** |
-| Credential Access | Password Cracking          | **T1110.002** |
-| Credential Access | Credentials in Files       | **T1552.001** |
-| Credential Access | DCSync / NTDS Extraction   | **T1003.006** |
-| Lateral Movement  | SMB / Windows Admin Shares | **T1021.002** |
-| Lateral Movement  | WinRM Remote Services      | **T1021**     |
-| Defense Evasion   | Pass-the-Hash              | **T1550.002** |
-| Execution         | PowerShell                 | **T1059.001** |
+## Event Correlation by Stage
 
----
+| Attack stage | Relevant telemetry |
+|---|---|
+| Kerberos enumeration | 4768, 4771 |
+| AS-REP Roasting | 4768, account preauthentication configuration |
+| SMB enumeration | 4624, 5140, 5145 |
+| Backup credential access | 5145 and available file-access telemetry |
+| DCSync | 4662, replication context, authentication logs, network telemetry |
+| Administrator authentication | 4624, 4672, WinRM logs |
+| PowerShell activity | 4688, 4104, PowerShell operational logs |
 
-## ATT&CK Attack Progression
+Event IDs alone are insufficient to establish every technique. Collection policy, auditing configuration, event fields, and surrounding behavior must be evaluated together.
 
-```text
-Reconnaissance
-      │
-      ▼
-Discovery
-      │
-      ▼
-Credential Access
-      │
-      ▼
-Privilege Escalation
-      │
-      ▼
-Lateral Movement
-      │
-      ▼
-Domain Administrator
-```
+# Kerberos Detection
 
-Every stage in this walkthrough maps directly to enterprise ATT&CK tactics.
+## Username Enumeration
 
----
+### Suspicious behavior
 
-# Windows Security Event IDs
+- High volumes of Kerberos requests over a short period.
+- Many distinct candidate usernames from a single source.
+- Requests from unusual workstations.
+- Repeated authentication failures or unusual account-targeting patterns.
 
-## Primary Detection Events
+### Investigation questions
 
-| Event ID | Description                     | Detection Value                 |
-| -------- | ------------------------------- | ------------------------------- |
-| **4624** | Successful Logon                | WinRM / SMB Authentication      |
-| **4625** | Failed Logon                    | Password Spraying / Enumeration |
-| **4648** | Explicit Credential Logon       | Pass-the-Hash Detection         |
-| **4662** | Directory Replication           | DCSync Detection                |
-| **4672** | Privileged Logon                | Administrative Session          |
-| **4688** | Process Creation                | PowerShell / SecretsDump        |
-| **4768** | Kerberos TGT Request            | Username Enumeration / AS-REP   |
-| **4769** | Kerberos Service Ticket         | Kerberos Activity               |
-| **4771** | Kerberos Authentication Failure | Enumeration Attempts            |
-| **5140** | SMB Share Access                | Backup Share Enumeration        |
-| **5145** | SMB Object Access               | Sensitive File Retrieval        |
+1. Which host generated the requests?
+2. How many distinct usernames were targeted?
+3. Were the requests associated with a known administrative or application workflow?
+4. Was the activity followed by SMB authentication or privileged access?
+5. Are the targeted accounts valid, disabled, or otherwise unusual?
 
----
+### Basic Sigma concept
 
-## Windows Event Investigation Dashboard
-
-| Attack Stage                 | Primary Events |
-| ---------------------------- | -------------- |
-| Kerberos Enumeration         | 4768, 4771     |
-| AS-REP Roasting              | 4768           |
-| SMB Enumeration              | 5140, 5145     |
-| Backup Credential Access     | 5145           |
-| DCSync                       | 4662           |
-| Administrator Authentication | 4624, 4672     |
-| PowerShell Session           | 4688, 4104     |
-
----
-
-# Kerberos Detection Engineering
-
-## Stage 1 — Username Enumeration Detection
-
-### Attack Behavior
-
-* Multiple Kerberos AS Requests.
-* Sequential usernames.
-* Same source host.
-
-### Investigation Questions
-
-* Which workstation generated requests?
-* How many usernames were tested?
-* Were requests successful?
-
----
-
-### Windows Security Logs
-
-| Event | Meaning                        |
-| ----- | ------------------------------ |
-| 4768  | Authentication Service Request |
-| 4771  | Failed Kerberos Authentication |
-
----
-
-## Detection Logic
-
-Suspicious characteristics include:
-
-* Hundreds of usernames.
-* Low authentication success rate.
-* New workstation.
-* Short request interval.
-
----
-
-### Sigma Detection Example
+The original report included:
 
 ```yaml
 title: Kerberos Username Enumeration
@@ -2237,53 +1412,21 @@ detection:
 condition: selection
 ```
 
----
+This is an illustrative selection rule. It matches a broad class of legitimate Kerberos activity and should not be deployed as a standalone high-confidence enumeration alert.
 
-## Defender for Identity Alert
+A production detection should incorporate available event fields, source context, event volume, account diversity, baselines, and exclusions for expected authentication services.
 
-Potential alert category:
+## AS-REP Roasting
 
-* Identity reconnaissance.
-* Suspicious Kerberos activity.
-* Account enumeration.
+### Investigation focus
 
----
+- Identify accounts configured without required Kerberos preauthentication.
+- Review Event 4768 details and preauthentication-related fields where available.
+- Correlate unusual ticket requests with the requesting host and account.
+- Prioritize service accounts and privileged identities with insecure configuration.
+- Determine whether the account subsequently authenticates to SMB or remote administration services.
 
-# AS-REP Roasting Detection
-
-## Attack Behavior
-
-The attacker requests AS-REP responses from accounts that do not require Kerberos preauthentication.
-
----
-
-## Detection Indicators
-
-| Indicator                  | Why Important     |
-| -------------------------- | ----------------- |
-| Multiple AS Requests       | User Enumeration  |
-| No Interactive Login       | Offline Attack    |
-| Vulnerable Service Account | Identity Exposure |
-
----
-
-## SOC Investigation
-
-Questions analysts should ask:
-
-* Which account requested AS-REP?
-* Does account require preauthentication?
-* Is account privileged?
-
----
-
-### MITRE Mapping
-
-**T1558.004**
-
----
-
-## Sigma Concept
+The original report includes a basic event-selection concept:
 
 ```yaml
 title: Kerberos ASREP Request Without Preauthentication
@@ -2301,142 +1444,108 @@ detection:
 condition: selection
 ```
 
----
+This is not a reliable standalone AS-REP Roasting detector. Event 4768 also represents legitimate ticket requests. A stronger detection needs the relevant event fields, account configuration, and behavioral context to distinguish requests made without preauthentication from ordinary authentication.
 
-# SMB Enumeration Detection
+### Defensive actions
 
-## Attack Behavior
+- Enable Kerberos preauthentication wherever compatible.
+- Audit exceptions and legacy service accounts.
+- Monitor suspicious requests for affected accounts.
+- Rotate exposed credentials when compromise is suspected.
+- Investigate any subsequent privileged access.
 
-Authenticated SMB enumeration followed successful credential recovery.
+# SMB and Credential Discovery Detection
 
----
+## SMB Enumeration
 
-## Indicators
+### Attack behavior
 
-| Event | Description   |
-| ----- | ------------- |
-| 5140  | Share Access  |
-| 5145  | File Access   |
-| 4624  | Network Logon |
+The documented sequence uses recovered service-account credentials to enumerate shares and investigate a backup location.
 
----
-
-## Investigation Workflow
+### Investigation workflow
 
 ```text
 Successful Authentication
-        │
-        ▼
+          |
+          v
 Share Enumeration
-        │
-        ▼
+          |
+          v
 Sensitive Share Access
-        │
-        ▼
-Credential Backup Download
+          |
+          v
+Credential File Retrieval
+          |
+          v
+Subsequent Account or Privilege Abuse
 ```
 
----
+### Relevant evidence
 
-## High Value Shares
+| Source | Investigation focus |
+|---|---|
+| Event 4624 | Account, source, and network logon context |
+| Event 5140 | Share access |
+| Event 5145 | Access checks against specific share objects |
+| Endpoint telemetry | File access, process activity, and possible staging |
+| Network telemetry | SMB connection patterns and source systems |
 
-| Share    | Investigation Priority |
-| -------- | ---------------------- |
-| SYSVOL   | High                   |
-| NETLOGON | High                   |
-| backup   | Critical               |
-| ADMIN$   | Critical               |
+### High-value shares documented in the walkthrough
 
----
+| Share | Investigation priority |
+|---|---|
+| `SYSVOL` | Review access to sensitive policy and script content |
+| `NETLOGON` | Review unexpected access and modifications |
+| `backup` | Investigate access to sensitive backup artifacts |
+| `ADMIN$` | Investigate unusual administrative-share activity |
 
-## Defender Recommendations
+The labels above represent investigation priorities in the context of the documented attack path, not a claim that all access to these shares is malicious.
 
-Monitor:
+## Credential Discovery
 
-* Backup share access.
-* Credential file downloads.
-* Administrative share enumeration.
+### Documented behavior
 
----
+The original report describes a backup file containing Base64-encoded credentials that were decoded after retrieval.
 
-# Credential Discovery Detection
+### Indicators to investigate
 
-## Attack Behavior
+- Unexpected access to files known to contain configuration or credential material.
+- Backup files containing encoded or plaintext secrets.
+- Access to sensitive shares by accounts without a clear operational requirement.
+- Credential use from a new host after the file-access event.
+- Authentication anomalies involving the account whose credentials may have been exposed.
 
-A backup credential file containing encoded credentials was downloaded and decoded.
+Base64 encoding alone is not a reliable Indicator of Compromise. Detection should focus on the sensitive content, the access context, and the subsequent activity.
 
----
+### Defensive actions
 
-## IOC Examples
+- Remove credentials from backup files.
+- Encrypt sensitive backup artifacts.
+- Restrict share and file permissions.
+- Rotate exposed credentials.
+- Audit backup access and monitor unexpected downloads.
 
-| IOC                    | Explanation               |
-| ---------------------- | ------------------------- |
-| Base64 Credential File | Credential Storage        |
-| Backup Configuration   | Secret Exposure           |
-| Password Export        | Sensitive Backup Artifact |
+# DCSync Detection
 
----
+## Why DCSync Requires High Priority
 
-## Security Recommendations
+The documented DCSync stage uses directory replication privileges to obtain credential material. If performed by an unauthorized principal, the activity can expose credentials across the domain and enable further compromise.
 
-* Encrypt backup archives.
-* Remove plaintext credentials.
-* Rotate compromised accounts.
-* Audit backup permissions.
+## Event 4662 Investigation
 
----
+Event 4662 can be useful when directory-service auditing and the appropriate SACLs are configured.
 
-# DCSync Detection Engineering
+Investigate:
 
-## Attack Behavior
+- Replication-related operations from accounts that are not expected to replicate directory data.
+- Replication activity from non-Domain Controller hosts.
+- Accounts granted replication permissions unexpectedly.
+- Changes to ACLs that create or expand replication privileges.
+- Authentication and network activity surrounding the replication event.
 
-The attacker impersonated a Domain Controller and requested directory replication.
+## Sigma Detection Concept
 
----
-
-## Why DCSync Is Critical
-
-DCSync allows password extraction without:
-
-* Interactive Administrator login.
-* Memory dumping.
-* Local execution.
-
----
-
-## Event ID 4662
-
-This event is the most important DCSync detection source.
-
-### Investigate
-
-* Replication initiated by user accounts.
-* Replication outside Domain Controllers.
-* Unusual DRSUAPI requests.
-
----
-
-## DCSync Investigation Workflow
-
-```text
-Replication Event
-        │
-        ▼
-Non-DC Account
-        │
-        ▼
-Directory Changes All Permission
-        │
-        ▼
-Credential Replication
-        │
-        ▼
-Potential Domain Compromise
-```
-
----
-
-## Sigma Rule Concept
+The original documentation included:
 
 ```yaml
 title: Active Directory DCSync Attempt
@@ -2454,919 +1563,596 @@ detection:
 condition: selection
 ```
 
----
+This is a broad event-selection example, not a complete DCSync detection rule. Event 4662 records many legitimate directory operations.
 
-## Microsoft Defender for Identity
+A production rule should identify relevant replication access, inspect applicable object and property information, establish whether the principal is authorized, and correlate the event with host and authentication context.
 
-Expected detections include:
+## Response Priorities
 
-* DCSync activity.
-* Replication abuse.
-* Credential theft.
+When unauthorized DCSync activity is suspected:
 
----
+1. Identify the principal and source host.
+2. Confirm whether the account is authorized for replication.
+3. Preserve the relevant Security logs and endpoint evidence.
+4. Audit replication permissions and recent ACL changes.
+5. Determine which credentials may have been exposed.
+6. Initiate the organization's credential-compromise and domain-recovery procedures.
 
-# Pass-the-Hash Detection
+Microsoft Defender for Identity and other identity-monitoring systems may provide relevant alerts, depending on configuration, licensing, and the activity observed. No specific alert is claimed to have fired during this lab.
 
-## Attack Behavior
+# Pass-the-Hash and WinRM Detection
 
-Administrator authenticated using NTLM hash through WinRM.
+## Documented behavior
 
----
+The original walkthrough describes Administrator authentication using an NTLM hash through Evil-WinRM, followed by PowerShell-based validation.
 
-## Detection Sources
+## Investigation indicators
 
-| Event | Description               |
-| ----- | ------------------------- |
-| 4624  | Successful Authentication |
-| 4648  | Explicit Credentials      |
-| 4672  | Privileged Logon          |
-| 4688  | PowerShell Execution      |
+- Unexpected NTLM authentication by a privileged account.
+- A new source host initiating WinRM sessions.
+- Privileged logon events that do not match the administrator's normal behavior.
+- PowerShell execution immediately following remote authentication.
+- A sequence involving prior SMB access and suspicious replication activity.
 
----
+## Relevant telemetry
 
-## Indicators
+| Event or source | Purpose |
+|---|---|
+| Event 4624 | Establish successful logon details |
+| Event 4672 | Establish privileged logon context |
+| Event 4688 | Review process creation where enabled |
+| Event 4104 | Review PowerShell script blocks where enabled |
+| WinRM operational logs | Investigate remote-management activity |
+| Endpoint telemetry | Correlate processes, network connections, and authentication |
 
-* Administrator WinRM login.
-* NTLM authentication.
-* PowerShell session.
-* Remote workstation.
-
----
+Event 4648 may contribute context when explicit credentials are used. Its absence does not rule out Pass-the-Hash.
 
 ## PowerShell Logging
 
-Enable:
+The original report recommends:
 
-* Script Block Logging.
-* Module Logging.
-* Transcription.
-* AMSI Integration.
+- Script Block Logging.
+- Module Logging.
+- PowerShell Transcription.
+- Antimalware Scan Interface (AMSI) integration.
 
----
+These controls provide complementary visibility. Their effectiveness depends on configuration, log collection, retention, and access controls.
 
-# Indicators of Compromise Dashboard
+# Indicators of Compromise
 
-## Authentication IOCs
+The following table consolidates the behavioral indicators described in the original walkthrough.
 
-| IOC                           | Description          |
-| ----------------------------- | -------------------- |
-| Multiple Kerberos AS Requests | Username Enumeration |
-| AS-REP Ticket Requests        | Kerberos Abuse       |
-| NTLM WinRM Authentication     | Pass-the-Hash        |
-| Replication by Backup Account | DCSync               |
+## Authentication Indicators
 
----
+| Indicator | Investigation focus |
+|---|---|
+| Multiple Kerberos AS requests | Identify unusual username-targeting behavior |
+| AS-REP responses without required preauthentication | Identify potentially exposed accounts |
+| Unusual privileged NTLM authentication | Investigate the source, account, and target service |
+| Replication by a backup account | Validate whether the principal is authorized |
+| Unexpected Administrator WinRM session | Correlate authentication with source-host activity |
 
-## Network IOCs
+## Network Indicators
 
-| IOC               | Detection Source       |
-| ----------------- | ---------------------- |
-| LDAP Queries      | Firewall / Zeek        |
-| SMB Enumeration   | Event 5140             |
-| WinRM Connections | Network Logs           |
-| DRSUAPI Traffic   | Defender / Network IDS |
+| Indicator | Investigation source |
+|---|---|
+| LDAP queries | Network and directory-service telemetry |
+| SMB enumeration | SMB connection logs and Event 5140 |
+| Sensitive share access | Event 5145 and endpoint file-access telemetry |
+| WinRM connections | WinRM operational logs and network telemetry |
+| DRSUAPI traffic | Network monitoring and identity-security telemetry |
 
----
+## Host Indicators
 
-## Host IOCs
+| Indicator | Investigation source |
+|---|---|
+| Suspicious PowerShell process | Event 4688 and endpoint telemetry |
+| Evil-WinRM remote session | WinRM logs and process/network correlation |
+| SecretsDump-related activity | Endpoint process monitoring and authentication/network evidence |
 
-| IOC                   | Investigation      |
-| --------------------- | ------------------ |
-| PowerShell Spawned    | Event 4688         |
-| Evil-WinRM Session    | WinRM Logs         |
-| SecretsDump Execution | Process Monitoring |
-
----
+Tool names and process names are investigative clues, not definitive proof of compromise. Attackers can use alternate tools or execution methods, and legitimate administrators may use some of the same technologies.
 
 # Threat Hunting Playbook
 
 ## Hunt 1 — Kerberos Enumeration
 
+**Objective:** Identify unusual patterns of Kerberos requests.
+
 Look for:
 
-* High volume Event 4768.
-* Many usernames.
-* Single source IP.
-
----
+- High request volume from one source.
+- Many distinct usernames.
+- Unexpected sources.
+- Authentication failures or other unusual response patterns.
+- Subsequent access to SMB or remote administration services.
 
 ## Hunt 2 — AS-REP Roasting
 
-Look for:
-
-* Accounts without preauthentication.
-* Event 4768 anomalies.
-* Service account requests.
-
----
-
-## Hunt 3 — SMB Credential Theft
+**Objective:** Find accounts that do not require Kerberos preauthentication and investigate suspicious requests involving them.
 
 Look for:
 
-* Backup share access.
-* Configuration file downloads.
-* Administrative shares.
+- Insecure account configuration.
+- Unusual AS-REQ patterns.
+- Requests from unexpected workstations.
+- Service accounts with weak or unmanaged credentials.
+- Follow-on authentication activity.
 
----
+## Hunt 3 — SMB Credential Exposure
+
+**Objective:** Identify unexpected access to sensitive backup locations.
+
+Look for:
+
+- New or unusual source systems.
+- Access to the `backup` share.
+- File-access events involving configuration or credential artifacts.
+- Authentication activity after sensitive file access.
+- Credentials reused from a new host or service.
 
 ## Hunt 4 — DCSync
 
-Look for:
-
-* Event 4662.
-* Replication outside DCs.
-* Replication by backup account.
-
----
-
-## Hunt 5 — Pass-the-Hash
+**Objective:** Identify unauthorized directory replication operations.
 
 Look for:
 
-* Administrator NTLM authentication.
-* WinRM.
-* Event 4648.
+- Event 4662 and relevant replication-access details.
+- Replication activity from non-Domain Controller hosts.
+- Principals with unexpected replication privileges.
+- Recent directory ACL changes.
+- Related privileged authentication and network activity.
 
----
+## Hunt 5 — Pass-the-Hash and Remote Administration
 
-# Microsoft Sentinel Hunting Ideas
+**Objective:** Investigate suspicious use of privileged authentication material.
 
-Potential hunting queries include monitoring:
+Look for:
 
-* Kerberos Ticket Requests.
-* DCSync Events.
-* WinRM Authentication.
-* SMB Administrative Share Access.
-* PowerShell Script Blocks.
+- Unexpected NTLM authentication.
+- Privileged WinRM sessions.
+- New source hosts.
+- Event 4624 and Event 4672 context.
+- PowerShell process and script-block telemetry.
 
----
-
-# Splunk Investigation Workflow
-
-## Investigation Sequence
-
-```text
-Kerberos Events
-      │
-      ▼
-Authentication Logs
-      │
-      ▼
-SMB Share Access
-      │
-      ▼
-Directory Replication
-      │
-      ▼
-Administrator Logon
-      │
-      ▼
-PowerShell Execution
-```
-
-Analysts correlate these stages into one incident timeline.
-
----
-
-# Active Directory Threat Intelligence Summary
-
-| Attack                      | Detection Priority           |
-| --------------------------- | ---------------------------- |
-| Username Enumeration        | Medium                       |
-| AS-REP Roasting             | High                         |
-| Password Cracking           | Offline (Limited Visibility) |
-| SMB Enumeration             | High                         |
-| Credential Discovery        | Critical                     |
-| DCSync                      | Critical                     |
-| Pass-the-Hash               | Critical                     |
-| WinRM Administrator Session | Critical                     |
-
----
-
-# SOC Analyst Investigation Checklist
+# SOC Investigation Checklist
 
 ## Identity Reconnaissance
 
-* [ ] Event 4768 reviewed.
-* [ ] Username volume analyzed.
-* [ ] Source workstation identified.
-
----
+- [ ] Review Kerberos Event 4768 activity.
+- [ ] Review relevant Event 4771 failures.
+- [ ] Analyze username volume and source-host context.
+- [ ] Identify accounts without required preauthentication.
 
 ## Credential Access
 
-* [ ] Roastable accounts identified.
-* [ ] SMB access investigated.
-* [ ] Credential files reviewed.
-
----
+- [ ] Identify the accounts targeted by AS-REP Roasting.
+- [ ] Investigate authenticated SMB access.
+- [ ] Review backup-share access.
+- [ ] Identify potentially exposed credential files.
+- [ ] Rotate credentials where exposure is confirmed or reasonably suspected.
 
 ## Privilege Escalation
 
-* [ ] Event 4662 analyzed.
-* [ ] Replication permissions audited.
-* [ ] NTDS extraction indicators reviewed.
+- [ ] Review Event 4662 and relevant replication details.
+- [ ] Audit directory replication permissions.
+- [ ] Investigate unexpected replication requests.
+- [ ] Review changes to privileged directory ACLs.
+- [ ] Determine which domain secrets may have been exposed.
 
----
+## Lateral Movement and Administration
 
-## Lateral Movement
+- [ ] Review privileged authentication events.
+- [ ] Investigate WinRM source hosts.
+- [ ] Correlate Event 4624 and Event 4672.
+- [ ] Review available PowerShell logs.
+- [ ] Build a timeline across identity, network, and endpoint evidence.
 
-* [ ] WinRM authentication reviewed.
-* [ ] Administrator session timeline built.
-* [ ] PowerShell logs collected.
+# Security Findings
 
----
+The following findings summarize the weaknesses documented in the original walkthrough. They are qualitative descriptions of the reported lab scenario, not a formal severity assessment based on a verified production environment.
 
-<div align="center">
+<div class="key-finding">
 
-## 🔍 Blue Team Visibility Achieved
+  <div class="key-finding-title">Finding 01 — Kerberos Preauthentication Exposure</div>
 
-**Windows Telemetry • MITRE ATT&CK • IOC Correlation • Detection Engineering**
+  The source reports an account configured without required Kerberos preauthentication, allowing AS-REP authentication material to be requested and tested offline.
 
-</div>
+  **Risk:** Weak account credentials may be recovered without performing each password guess against the Domain Controller.
 
----
-
----
-
-# Enterprise Security Hardening & Defensive Recommendations
-
-> *Every attack path demonstrated in this assessment can be disrupted through layered defensive controls.*
-
-The Attacktive Directory room highlights several common Active Directory misconfigurations. This section maps each offensive technique to practical defensive recommendations used in enterprise Windows environments.
-
-Rather than focusing only on detection, the goal is to reduce the attack surface before credential abuse becomes possible.
-
----
-
-# Active Directory Security Assessment
-
-## Overall Security Posture
-
-| Security Area            | Assessment              |
-| ------------------------ | ----------------------- |
-| Kerberos Configuration   | Needs Hardening         |
-| Service Account Security | High Risk               |
-| Password Policy          | Weak                    |
-| SMB Permissions          | Sensitive Exposure      |
-| Replication Permissions  | Overprivileged          |
-| NTLM Authentication      | Legacy Risk             |
-| WinRM Access             | Administrative Exposure |
-
----
-
-## Defense-in-Depth Strategy
-
-```text
-Identity Security
-      │
-      ▼
-Authentication Hardening
-      │
-      ▼
-Privilege Management
-      │
-      ▼
-Credential Protection
-      │
-      ▼
-Monitoring & Detection
-      │
-      ▼
-Incident Response
-```
-
----
-
-# Kerberos Security Hardening
-
-## Enable Kerberos Preauthentication
-
-The most important mitigation demonstrated in this room.
-
-### Why It Matters
-
-Preauthentication prevents AS-REP Roasting by requiring proof of password knowledge before authentication material is generated.
-
----
-
-### Security Recommendation
-
-* Enable Kerberos preauthentication for every user account.
-* Audit legacy service accounts.
-* Remove exceptions wherever possible.
-
----
-
-## Audit Roastable Accounts
-
-Regularly identify accounts configured without preauthentication.
-
-### Review Items
-
-* Service Accounts
-* Legacy Accounts
-* Disabled Accounts
-* Backup Accounts
-
----
-
-## Password Policy Improvements
-
-### Enterprise Recommendations
-
-| Control          | Recommendation           |
-| ---------------- | ------------------------ |
-| Minimum Length   | 14–16 Characters         |
-| Complexity       | Enabled                  |
-| Rotation         | Service Account Rotation |
-| MFA              | Administrative Accounts  |
-| Password History | Enabled                  |
-
----
-
-### Service Account Best Practices
-
-* Use **Group Managed Service Accounts (gMSA)**.
-* Avoid manually managed passwords.
-* Rotate credentials automatically.
-* Remove interactive logon permissions.
-
----
-
-<div align="center">
-
-## Kerberos Attack Surface Reduced
+  **Recommended control:** Enable preauthentication wherever compatible, audit exceptions, and enforce strong service-account credential management.
 
 </div>
 
----
+<div class="key-finding">
 
-# Active Directory Privilege Hardening
+  <div class="key-finding-title">Finding 02 — Weak Service-Account Password</div>
 
-## Audit Replication Permissions
+  The original report describes successful offline dictionary-based password recovery for `svc-admin`.
 
-The privilege escalation stage succeeded because the backup account possessed replication permissions.
+  **Risk:** Recovered credentials may allow authenticated access to additional domain resources.
 
-### High-Risk Permissions
-
-| Permission                        | Recommendation          |
-| --------------------------------- | ----------------------- |
-| Replicating Directory Changes     | Audit Regularly         |
-| Replicating Directory Changes All | Restrict                |
-| Domain Replication                | Domain Controllers Only |
-
----
-
-## Privileged Group Review
-
-Review membership of:
-
-* Domain Admins
-* Enterprise Admins
-* Backup Operators
-* Account Operators
-* Server Operators
-
----
-
-## Principle of Least Privilege
-
-Every administrative account should have:
-
-* Minimal permissions.
-* Separate privileged identity.
-* Dedicated administrative workstation.
-
----
-
-# SMB Security Hardening
-
-## Protect Sensitive Shares
-
-### Shares That Require Monitoring
-
-| Share    | Recommendation               |
-| -------- | ---------------------------- |
-| SYSVOL   | Audit Read Access            |
-| NETLOGON | Restrict Modifications       |
-| ADMIN$   | Administrative Monitoring    |
-| Backup   | Encryption + Restricted ACLs |
-
----
-
-## Backup Security Recommendations
-
-* Encrypt backups.
-* Remove credentials.
-* Protect configuration files.
-* Restrict read permissions.
-* Monitor backup downloads.
-
----
-
-## SMB Monitoring Checklist
-
-* [ ] Event ID 5140 enabled.
-* [ ] Event ID 5145 enabled.
-* [ ] Administrative shares audited.
-* [ ] Backup share alerts configured.
-
----
-
-<div align="center">
-
-## SMB Credential Exposure Mitigated
+  **Recommended control:** Use strong, managed service-account credentials and apply least privilege.
 
 </div>
 
----
+<div class="key-finding">
 
-# NTLM & Pass-the-Hash Mitigation
+  <div class="key-finding-title">Finding 03 — Sensitive Backup Material</div>
 
-## Restrict NTLM Authentication
+  The source describes a backup share containing a file with Base64-encoded credentials.
 
-Pass-the-Hash relies on reusable NTLM authentication material.
+  **Risk:** A user who can read the file may recover the underlying secret because Base64 is not encryption.
 
-### Microsoft Recommendations
-
-* Prefer Kerberos authentication.
-* Disable NTLM where possible.
-* Restrict outbound NTLM.
-* Restrict incoming NTLM.
-
----
-
-## Enable Credential Guard
-
-Credential Guard protects authentication secrets from theft.
-
-### Benefits
-
-* Protects LSASS secrets.
-* Limits credential dumping.
-* Reduces Pass-the-Hash exposure.
-
----
-
-## Enable Windows Defender Credential Protection
-
-Additional protections include:
-
-* Remote Credential Guard.
-* Protected Users Group.
-* Restricted Admin Mode.
-
----
-
-# Local Administrator Password Solution (LAPS)
-
-## Why LAPS Matters
-
-LAPS randomizes local administrator passwords across Windows systems.
-
-### Benefits
-
-* Prevents password reuse.
-* Reduces lateral movement.
-* Protects administrator credentials.
-
----
-
-## Enterprise LAPS Benefits
-
-| Feature            | Benefit                |
-| ------------------ | ---------------------- |
-| Random Passwords   | No Credential Reuse    |
-| Automatic Rotation | Reduced Exposure       |
-| AD Storage         | Centralized Management |
-
----
-
-<div align="center">
-
-## Lateral Movement Risk Reduced
+  **Recommended control:** Remove credentials from ordinary files, encrypt sensitive backup artifacts, and restrict share access.
 
 </div>
 
----
+<div class="key-finding">
 
-# Microsoft Defender for Identity Recommendations
+  <div class="key-finding-title">Finding 04 — Excessive Directory Replication Privileges</div>
 
-## Identity Protection Coverage
+  The walkthrough attributes DCSync access to replication permissions assigned to the backup account.
 
-Microsoft Defender for Identity can detect many techniques demonstrated during this assessment.
+  **Risk:** Unauthorized replication access can expose credential material for domain identities.
 
-### Detection Categories
-
-| Detection              | Coverage |
-| ---------------------- | -------- |
-| AS-REP Roasting        | ✅        |
-| Kerberoasting          | ✅        |
-| DCSync                 | ✅        |
-| Pass-the-Hash          | ✅        |
-| LDAP Reconnaissance    | ✅        |
-| Suspicious Replication | ✅        |
-
----
-
-## Defender Investigation Workflow
-
-```text
-Identity Alert
-      │
-      ▼
-Affected User
-      │
-      ▼
-Authentication Timeline
-      │
-      ▼
-Lateral Movement
-      │
-      ▼
-Credential Theft Investigation
-```
-
----
-
-## Recommended Microsoft Security Features
-
-* Microsoft Defender for Identity
-* Defender for Endpoint
-* Microsoft Sentinel
-* Entra ID Identity Protection
-* Attack Surface Reduction Rules
-
----
-
-# Windows PowerShell Logging Recommendations
-
-## Enable Advanced Logging
-
-| Feature                  | Recommendation |
-| ------------------------ | -------------- |
-| Script Block Logging     | Enabled        |
-| Module Logging           | Enabled        |
-| PowerShell Transcription | Enabled        |
-| AMSI                     | Enabled        |
-
----
-
-## Why It Matters
-
-PowerShell was used after administrative access.
-
-Logging provides:
-
-* Command visibility.
-* Timeline reconstruction.
-* Threat hunting telemetry.
-
----
-
-# Zero Trust Recommendations
-
-## Identity-Centric Security Model
-
-Zero Trust assumes:
-
-* Identity can be compromised.
-* Authentication requires verification.
-* Least privilege is enforced continuously.
-
----
-
-## Zero Trust Controls
-
-| Principle         | Implementation           |
-| ----------------- | ------------------------ |
-| Verify Explicitly | MFA + Conditional Access |
-| Least Privilege   | RBAC + JIT Access        |
-| Assume Breach     | Continuous Monitoring    |
-
----
-
-## Administrative Security Model
-
-* Dedicated Admin Accounts.
-* Dedicated Admin Workstations.
-* Separate Privileged Sessions.
-* JIT Privileged Access.
-
----
-
-<div align="center">
-
-## Zero Trust Identity Protection
+  **Recommended control:** Restrict replication rights to authorized principals and monitor replication activity.
 
 </div>
 
----
+<div class="key-finding">
 
-# Security Monitoring Dashboard
+  <div class="key-finding-title">Finding 05 — Reusable Administrator NTLM Material</div>
 
-## Recommended Telemetry Sources
+  The original report describes successful Administrator authentication using recovered NTLM material through WinRM.
 
-| Source                | Purpose                      |
-| --------------------- | ---------------------------- |
-| Windows Security Logs | Authentication Events        |
-| Sysmon                | Process & Network Visibility |
-| Defender for Endpoint | Endpoint Detection           |
-| Defender for Identity | Identity Threat Detection    |
-| Sentinel              | SIEM Correlation             |
-| Zeek                  | Network Visibility           |
+  **Risk:** Exposed reusable authentication material may enable unauthorized privileged access.
 
----
+  **Recommended control:** Restrict NTLM where feasible, protect privileged credentials, audit remote administration, and rotate compromised secrets.
 
-## SOC Correlation Workflow
+</div>
+
+# Enterprise Security Hardening
+
+The recommendations below map directly to the attack path described in the supplied documentation.
+
+## Kerberos Security
+
+### Enable preauthentication
+
+- Audit accounts configured without Kerberos preauthentication.
+- Enable preauthentication wherever compatible with business requirements.
+- Remove unnecessary exceptions.
+- Review legacy service accounts.
+
+### Improve service-account security
+
+- Prefer Group Managed Service Accounts (gMSAs) where suitable.
+- Use strong, managed credentials.
+- Remove unnecessary interactive logon rights.
+- Apply least privilege.
+- Rotate exposed service-account credentials.
+
+### Password management
+
+The original report recommends a minimum password length of 14–16 characters, password history, and administrative MFA. These are retained as recommendations from the source rather than assertions about an existing policy.
+
+Modern enterprise password policy should also account for current organizational standards, password screening, and the use of managed credentials.
+
+## Active Directory Privilege Hardening
+
+### Audit replication permissions
+
+Review the principals assigned:
+
+- Replicating Directory Changes.
+- Replicating Directory Changes All.
+- Other directory permissions that can grant access to sensitive data.
+
+Restrict these rights to authorized principals and validate them periodically.
+
+### Review privileged groups
+
+The original walkthrough recommends reviewing membership of:
+
+- Domain Admins.
+- Enterprise Admins.
+- Backup Operators.
+- Account Operators.
+- Server Operators.
+
+Membership should be justified, documented, and reviewed for unnecessary privilege.
+
+### Apply least privilege
+
+- Use separate privileged accounts.
+- Limit the number of identities with domain-wide privileges.
+- Use dedicated administrative workstations where appropriate.
+- Review changes to sensitive directory ACLs.
+- Monitor administrative authentication.
+
+## SMB and Backup Security
+
+### Protect sensitive shares
+
+| Share | Defensive focus |
+|---|---|
+| `SYSVOL` | Audit access and prevent unnecessary sensitive data exposure |
+| `NETLOGON` | Restrict modifications to authorized principals |
+| `ADMIN$` | Monitor administrative access |
+| `backup` | Encrypt sensitive files and restrict access using ACLs |
+
+### Backup security checklist
+
+- [ ] Remove plaintext credentials from backups.
+- [ ] Encrypt sensitive backup artifacts.
+- [ ] Restrict read and write permissions.
+- [ ] Audit backup share access.
+- [ ] Rotate credentials exposed in files.
+- [ ] Monitor unusual downloads and access patterns.
+
+### SMB monitoring
+
+The source recommends monitoring Event 5140 and Event 5145. These events should be correlated with account identity, source host, share name, and available file-access information.
+
+## NTLM and Pass-the-Hash Mitigation
+
+The original report recommends restricting NTLM authentication and preferring Kerberos wherever feasible.
+
+Additional defensive measures include:
+
+- Apply supported Windows credential protections.
+- Evaluate Credential Guard where supported.
+- Use Remote Credential Guard and Protected Users protections where appropriate to the environment.
+- Restrict incoming and outgoing NTLM based on compatibility requirements.
+- Avoid reusing local administrator passwords.
+- Investigate unusual privileged NTLM sessions.
+
+Credential Guard can help protect certain credential material, but it should not be treated as a complete defense against every form of Pass-the-Hash or credential misuse.
+
+## Local Administrator Password Solution
+
+The original report recommends Microsoft LAPS to randomize and manage local administrator passwords.
+
+| Capability | Security benefit |
+|---|---|
+| Unique local administrator passwords | Reduces credential reuse between systems |
+| Managed password rotation | Limits the useful lifetime of exposed local credentials |
+| Controlled password access | Supports administrative accountability |
+
+LAPS helps reduce local-account credential reuse. It does not replace domain credential protection or appropriate directory privilege controls.
+
+## Identity Monitoring and SIEM
+
+The original documentation recommends considering:
+
+- Microsoft Defender for Identity.
+- Microsoft Defender for Endpoint.
+- Microsoft Sentinel.
+- Entra ID Identity Protection.
+- Attack Surface Reduction rules.
+- Windows Security logs.
+- Sysmon.
+- Zeek.
+
+These tools have different coverage and deployment requirements. They are defensive recommendations, not a claim that all were deployed during this assessment.
+
+### Recommended correlation flow
 
 ```text
 Windows Security Logs
-        │
-        ▼
-Sysmon Events
-        │
-        ▼
-Defender Alerts
-        │
-        ▼
-Microsoft Sentinel
-        │
-        ▼
-Incident Timeline
+          |
+          v
+Endpoint Telemetry
+          |
+          v
+Identity Security Alerts
+          |
+          v
+SIEM Correlation
+          |
+          v
+Investigation Timeline
+          |
+          v
+Containment and Recovery
 ```
 
----
+## PowerShell Logging
+
+The original report recommends:
+
+| Control | Recommendation |
+|---|---|
+| Script Block Logging | Enable and collect where appropriate |
+| Module Logging | Enable and collect where appropriate |
+| PowerShell Transcription | Configure with suitable access and retention controls |
+| AMSI | Maintain supported antimalware integration |
+
+Logging should be protected against unauthorized modification, retained according to policy, and sent to a monitoring system where possible.
+
+## Zero Trust and Privileged Access
+
+The original report describes the following principles:
+
+| Principle | Example implementation |
+|---|---|
+| Verify explicitly | MFA and context-aware access controls |
+| Least privilege | Role-based access and just-in-time elevation |
+| Assume breach | Continuous monitoring and incident readiness |
+
+Additional controls include separate administrative accounts, dedicated privileged sessions, and appropriately secured administrative workstations.
+
+These controls reduce exposure but must be implemented in a way that accounts for operational requirements and the organization's existing identity architecture.
 
 # Incident Response Recommendations
 
 ## If DCSync Is Detected
 
-Immediate actions:
+1. Identify the account, source host, and replication operations.
+2. Confirm whether the principal is authorized for directory replication.
+3. Contain the compromised identity and affected host according to incident-response procedures.
+4. Review replication permissions and recent directory ACL changes.
+5. Determine which credentials may have been exposed.
+6. Rotate affected privileged credentials and investigate related sessions.
+7. Assess the need for a domain recovery procedure.
 
-1. Disable compromised account.
-2. Rotate privileged credentials.
-3. Reset KRBTGT twice.
-4. Audit replication permissions.
-5. Investigate lateral movement.
-6. Review Domain Controller logs.
+The original report recommends resetting the KRBTGT password twice. This is a specialized Active Directory recovery operation, not a routine first response. It should be performed only as part of a coordinated recovery plan after the environment and replication health have been assessed.
 
----
+## If Pass-the-Hash Is Suspected
 
-## If Pass-the-Hash Is Detected
+- Investigate the privileged logon and source host.
+- Preserve authentication, WinRM, and PowerShell evidence.
+- Contain the affected account or host as appropriate.
+- Rotate compromised credentials.
+- Review subsequent administrative actions.
+- Restrict NTLM where operationally feasible.
 
-* Reset compromised credentials.
-* Invalidate NTLM authentication where possible.
-* Review WinRM logs.
-* Review PowerShell logs.
+## If Backup Credentials Are Exposed
 
----
-
-## If Backup Credentials Leak
-
-* Rotate backup account password.
-* Remove plaintext secrets.
-* Review backup permissions.
-* Audit file access.
-
----
-
-<div align="center">
-
-## Incident Containment Strategy
-
-</div>
-
----
+- Restrict access to the affected files and share.
+- Rotate the exposed credentials.
+- Identify other locations where the same credentials were used.
+- Review file-access and authentication logs.
+- Remove stored secrets from ordinary backup files.
+- Audit the relevant permissions and access controls.
 
 # Lessons Learned
 
 ## Offensive Security Lessons
 
-This room demonstrates how authentication weaknesses can become more impactful than software vulnerabilities.
+The documented sequence demonstrates how an identity attack can progress without relying on a single software vulnerability.
 
-### Key Offensive Concepts Learned
+Key concepts include:
 
-* Active Directory reconnaissance.
-* Kerberos username enumeration.
-* AS-REP Roasting.
-* Offline password cracking.
-* SMB credential discovery.
-* DCSync replication abuse.
-* NTDS extraction.
-* Pass-the-Hash authentication.
-* WinRM administration.
-
----
+- Identifying a Domain Controller through service enumeration.
+- Using domain information to guide Kerberos enumeration.
+- Recognizing the risk of accounts without Kerberos preauthentication.
+- Testing captured authentication material offline.
+- Using valid credentials to investigate SMB shares.
+- Recognizing encoded credentials as exposed secrets when no encryption is present.
+- Understanding the security impact of directory replication permissions.
+- Distinguishing NTLM hash reuse from plaintext password recovery.
+- Validating privileged access through remote administration.
 
 ## Defensive Security Lessons
 
-### Identity Protection
+The same attack path highlights several preventive controls:
 
-* Enable Kerberos preauthentication.
-* Rotate service account passwords.
-* Audit privileged permissions.
-* Restrict replication rights.
-
-### Monitoring
-
-* Kerberos authentication monitoring.
-* SMB auditing.
-* DCSync detection.
-* WinRM monitoring.
-
----
+- Enforce secure Kerberos account configuration.
+- Use strong, managed service-account credentials.
+- Restrict sensitive backup access.
+- Audit directory replication permissions.
+- Protect reusable authentication material.
+- Monitor privileged NTLM and WinRM activity.
+- Correlate identity, endpoint, and network telemetry.
 
 ## SOC Analyst Takeaways
 
-The engagement provides excellent practice for:
+The assessment provides practice in:
 
-* MITRE ATT&CK mapping.
-* Windows Event Correlation.
-* Sigma detection writing.
-* Active Directory threat hunting.
-* Microsoft Defender investigation workflow.
+- Windows Security event interpretation.
+- Kerberos and SMB investigation.
+- Directory replication monitoring.
+- MITRE ATT&CK mapping.
+- Detection-rule design.
+- Indicator correlation.
+- Threat hunting.
+- Incident-response planning.
 
----
+The central lesson is that identity weaknesses can compound. A weak service-account password, sensitive backup data, and excessive replication permissions can form a much more serious attack path when combined.
 
-# Skills Demonstrated During This Room
+# Learning Outcomes
 
-## Red Team
+After reviewing this walkthrough, a learner should be able to explain:
 
-* Active Directory Enumeration
-* Kerberos Abuse
-* Credential Access
-* Password Cracking
-* SMB Enumeration
-* NTDS Extraction
-* Pass-the-Hash
-* PowerShell Administration
+- The role of a Domain Controller in Active Directory.
+- The purpose of Kerberos preauthentication.
+- How AS-REP Roasting differs from online password guessing.
+- Why offline password cracking can bypass ordinary online attempt limits.
+- How authenticated SMB enumeration can reveal sensitive files.
+- Why Base64 is encoding rather than encryption.
+- How replication permissions can enable DCSync.
+- Why NTLM hashes can present an authentication risk.
+- How WinRM can be used for remote Windows administration.
+- Which Windows telemetry can support detection and investigation.
+- How to map observed behavior to MITRE ATT&CK.
+- Which preventive controls address the documented attack chain.
 
----
+# Screenshot and Evidence Index
 
-## Blue Team
+All image paths below are relative to `docs/index.md`. The original screenshot filenames are retained; only the obsolete `images/` subdirectory is removed.
 
-* Windows Event Analysis
-* IOC Identification
-* Sigma Rule Concepts
-* Detection Engineering
-* Identity Threat Monitoring
-* Active Directory Hardening
-* Incident Response Planning
+| Figure | Evidence | Path relative to `docs/index.md` |
+|---|---|---|
+| Figure 1 | Active Directory architecture | `assets/architecture.png` |
+| Figure 2.1 | Initial Nmap reconnaissance | `assets/01-nmap-recon.png` |
+| Figure 2.2 | SMB domain discovery | `assets/02-domain-discovery.png` |
+| Figure 3.1 | Kerberos username enumeration | `assets/03-kerberos-user-enum.png` |
+| Figure 4.1 | AS-REP Roasting | `assets/04-asrep-enumeration.png` |
+| Figure 5.1 | Hashcat password recovery | `assets/05-hashcat-crack.png` |
+| Figure 6.1 | SMB share enumeration | `assets/06-smb-share-enum.png` |
+| Figure 7.1 | Backup credential decoding | `assets/07-backup-credential-decode.png` |
+| Figure 9.1 | DCSync / credential extraction | `assets/08-ntds-dump.png` |
+| Figure 11.1 | Administrator shell | `assets/09-administrator-shell.png` |
+| Figure 13.1 | Redacted challenge completion | `assets/10-flag-redacted.png` |
 
----
+The source document states that its screenshots were recreated for portfolio documentation. Their actual contents and file existence have not been independently verified here.
 
-<div align="center">
+# References and Further Reading
 
-## Red Team + Blue Team Skill Coverage
-
-</div>
-
----
-
-# References & Further Reading
+The original documentation names the following resources and documentation areas but does not provide their specific URLs. They are preserved by name rather than replaced with guessed links.
 
 ## Microsoft Documentation
 
-* Active Directory Domain Services
-* Kerberos Authentication
-* Windows Event IDs
-* Credential Guard
-* Microsoft LAPS
-* Defender for Identity
-
----
+- Active Directory Domain Services.
+- Kerberos Authentication.
+- Windows Security Event IDs.
+- Credential Guard.
+- Microsoft Local Administrator Password Solution (LAPS).
+- Microsoft Defender for Identity.
+- Microsoft Defender for Endpoint.
+- Microsoft Sentinel.
 
 ## MITRE ATT&CK
 
-* Credential Access
-* Discovery
-* Lateral Movement
-* Defense Evasion
-* Windows Authentication
+- Discovery.
+- Credential Access.
+- Lateral Movement.
+- Defense Evasion.
+- Windows authentication techniques.
 
----
+## Security Tools and Research
 
-## Security Research
-
-* Impacket Documentation
-* Hashcat Documentation
-* Evil-WinRM Documentation
-* SigmaHQ Rules
-* Microsoft Security Best Practices
-
----
+- Impacket documentation.
+- Hashcat documentation.
+- Evil-WinRM documentation.
+- SigmaHQ rules.
+- Microsoft security best practices.
 
 ## Training Platform
 
-**TryHackMe — Attacktive Directory**
+TryHackMe — Attacktive Directory.
 
-This documentation was produced from an authorized educational lab environment.
-
----
+The original report identifies this room as the authorized training environment for the assessment.
 
 # Repository Resources
 
-| File                                                    | Purpose                                   |
-| ------------------------------------------------------- | ----------------------------------------- |
-| `README.md`                                             | Repository landing page                   |
-| `Resources/notes.md`                                    | Pentesting notes and commands             |
-| `Documentation/Attacktive_Directory_documentation.md`   | Full technical report                     |
-| `Documentation/Attacktive_Directory_documentation.docx` | Printable documentation                   |
-| `docs/index.md`                                         | Premium GitHub Pages website              |
-| `docs/assets/images/`                                   | Screenshots used throughout documentation |
+The original documentation lists the following repository resources.
 
----
+| Resource | Purpose |
+|---|---|
+| `README.md` | Repository landing page |
+| `Resources/notes.md` | Penetration-testing notes and commands |
+| `Documentation/Attacktive_Directory_documentation.md` | Full technical report |
+| `Documentation/Attacktive_Directory_documentation.docx` | Printable documentation |
+| `docs/index.md` | GitHub Pages portfolio document |
+| `docs/assets/` | Screenshot and image assets referenced by this page |
 
-# Screenshot Reference Index
+The paths listed in this table are retained from the source documentation. Their existence has not been independently checked.
 
-| Figure      | Image                             |
-| ----------- | --------------------------------- |
-| Figure 2.1  | `01-nmap-recon.png`               |
-| Figure 2.2  | `02-domain-discovery.png`         |
-| Figure 3.1  | `03-kerberos-user-enum.png`       |
-| Figure 4.1  | `04-asrep-enumeration.png`        |
-| Figure 5.1  | `05-hashcat-crack.png`            |
-| Figure 6.1  | `06-smb-share-enum.png`           |
-| Figure 7.1  | `07-backup-credential-decode.png` |
-| Figure 9.1  | `08-ntds-dump.png`                |
-| Figure 11.1 | `09-administrator-shell.png`      |
-| Figure 13.1 | `10-flag-redacted.png`            |
+# Responsible Use
 
----
+This documentation was created for authorized cybersecurity training and CTF environments. The techniques described here should only be used against systems for which explicit permission to test has been granted.
 
-# Portfolio Highlights
+Credential material and challenge flags intentionally redacted in the source remain redacted in this report.
 
-## What This Project Demonstrates
-
-* Enterprise Active Directory security assessment.
-* Complete identity attack lifecycle.
-* Kerberos authentication abuse.
-* SMB credential harvesting.
-* Active Directory privilege escalation.
-* Detection engineering methodology.
-* MITRE ATT&CK mapping.
-* SOC investigation workflow.
-* Security hardening recommendations.
-
-This repository represents both **offensive security methodology** and **defensive detection engineering**.
-
----
-
-# About This Portfolio
-
-## Cybersecurity Portfolio Series
-
-This project is part of a growing collection of professionally documented cybersecurity labs and CTF walkthroughs covering:
-
-* Active Directory Security
-* Windows Privilege Escalation
-* Web Application Exploitation
-* Cloud Security
-* Network Security
-* Detection Engineering
-* Threat Hunting
-* SOC Investigations
-
-Every repository follows the same documentation standard:
-
-* Executive Summary
-* Attack Methodology
-* Technical Walkthrough
-* MITRE ATT&CK Mapping
-* Detection Engineering Notes
-* Enterprise Hardening
-* GitHub Pages Documentation
-
----
-
-<div align="center">
-
-# 👨‍💻 Author
-
-## **Anurag Revankar**
-
-Cybersecurity • SOC Analyst • Detection Engineering • Active Directory Security • Threat Hunting
-
----
-
-### 🛡️ Enterprise Active Directory Red Team Case Study
-
-**TryHackMe — Attacktive Directory**
-
-*Professional Cybersecurity Portfolio Documentation*
-
----
-
-**Thanks for visiting this project ⭐**
-
-If you found this documentation useful, consider starring the repository.
-
----
-
-> *Built for learning. Documented for professionals. Shared for the cybersecurity community.*
-
-</div>
