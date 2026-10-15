@@ -95,48 +95,50 @@ The report is intended for cybersecurity learners, penetration testers, SOC anal
 
 <div class="ctf-toc-title">Documentation Map</div>
 
-- [Mission](#mission)
-- [Quick Overview](#quick-overview)
-- [Assessment Objectives](#assessment-objectives)
-- [Target and Lab Information](#target-and-lab-information)
-- [Tools Used](#tools-used)
-- [Lab Architecture](#lab-architecture)
-- [Kerberos Authentication Fundamentals](#kerberos-authentication-fundamentals)
-- [Attack Chain](#attack-chain)
-- [Skills Demonstrated](#skills-demonstrated)
-- [01 — Network Reconnaissance](#01--network-reconnaissance)
-- [02 — Domain Discovery](#02--domain-discovery)
-- [03 — Kerberos Username Enumeration](#03--kerberos-username-enumeration)
-- [04 — AS-REP Roasting](#04--as-rep-roasting)
-- [05 — Offline Password Cracking](#05--offline-password-cracking)
-- [06 — Authenticated SMB Enumeration](#06--authenticated-smb-enumeration)
-- [07 — Backup Credential Discovery](#07--backup-credential-discovery)
-- [08 — Backup Account Security Analysis](#08--backup-account-security-analysis)
-- [09 — DCSync Privilege Escalation](#09--dcsync-privilege-escalation)
-- [10 — Administrator NTLM Hash Analysis](#10--administrator-ntlm-hash-analysis)
-- [11 — Pass-the-Hash Authentication](#11--pass-the-hash-authentication)
-- [12 — Post-Exploitation Validation](#12--post-exploitation-validation)
-- [13 — Challenge Completion](#13--challenge-completion)
-- [End-to-End Attack Timeline](#end-to-end-attack-timeline)
-- [MITRE ATT&CK Mapping](#mitre-attck-mapping)
-- [Detection Engineering](#detection-engineering)
-- [Windows Security Event Reference](#windows-security-event-reference)
-- [Kerberos Detection](#kerberos-detection)
-- [SMB and Credential Discovery Detection](#smb-and-credential-discovery-detection)
-- [DCSync Detection](#dcsync-detection)
-- [Pass-the-Hash and WinRM Detection](#pass-the-hash-and-winrm-detection)
-- [Indicators of Compromise](#indicators-of-compromise)
-- [Threat Hunting Playbook](#threat-hunting-playbook)
-- [SOC Investigation Checklist](#soc-investigation-checklist)
-- [Security Findings](#security-findings)
-- [Enterprise Security Hardening](#enterprise-security-hardening)
-- [Incident Response Recommendations](#incident-response-recommendations)
-- [Lessons Learned](#lessons-learned)
-- [Learning Outcomes](#learning-outcomes)
-- [Screenshot and Evidence Index](#screenshot-and-evidence-index)
-- [References and Further Reading](#references-and-further-reading)
-- [Repository Resources](#repository-resources)
-- [Responsible Use](#responsible-use)
+<ul>
+  <li><a href="#mission">Mission</a></li>
+  <li><a href="#quick-overview">Quick Overview</a></li>
+  <li><a href="#assessment-objectives">Assessment Objectives</a></li>
+  <li><a href="#target-and-lab-information">Target and Lab Information</a></li>
+  <li><a href="#tools-used">Tools Used</a></li>
+  <li><a href="#lab-architecture">Lab Architecture</a></li>
+  <li><a href="#kerberos-authentication-fundamentals">Kerberos Authentication Fundamentals</a></li>
+  <li><a href="#attack-chain">Attack Chain</a></li>
+  <li><a href="#skills-demonstrated">Skills Demonstrated</a></li>
+  <li><a href="#01--network-reconnaissance">01 — Network Reconnaissance</a></li>
+  <li><a href="#02--domain-discovery">02 — Domain Discovery</a></li>
+  <li><a href="#03--kerberos-username-enumeration">03 — Kerberos Username Enumeration</a></li>
+  <li><a href="#04--as-rep-roasting">04 — AS-REP Roasting</a></li>
+  <li><a href="#05--offline-password-cracking">05 — Offline Password Cracking</a></li>
+  <li><a href="#06--authenticated-smb-enumeration">06 — Authenticated SMB Enumeration</a></li>
+  <li><a href="#07--backup-credential-discovery">07 — Backup Credential Discovery</a></li>
+  <li><a href="#08--backup-account-security-analysis">08 — Backup Account Security Analysis</a></li>
+  <li><a href="#09--dcsync-privilege-escalation">09 — DCSync Privilege Escalation</a></li>
+  <li><a href="#10--administrator-ntlm-hash-analysis">10 — Administrator NTLM Hash Analysis</a></li>
+  <li><a href="#11--pass-the-hash-authentication">11 — Pass-the-Hash Authentication</a></li>
+  <li><a href="#12--post-exploitation-validation">12 — Post-Exploitation Validation</a></li>
+  <li><a href="#13--challenge-completion">13 — Challenge Completion</a></li>
+  <li><a href="#end-to-end-attack-timeline">End-to-End Attack Timeline</a></li>
+  <li><a href="#mitre-attck-mapping">MITRE ATT&amp;CK Mapping</a></li>
+  <li><a href="#detection-engineering">Detection Engineering</a></li>
+  <li><a href="#windows-security-event-reference">Windows Security Event Reference</a></li>
+  <li><a href="#kerberos-detection">Kerberos Detection</a></li>
+  <li><a href="#smb-and-credential-discovery-detection">SMB and Credential Discovery Detection</a></li>
+  <li><a href="#dcsync-detection">DCSync Detection</a></li>
+  <li><a href="#pass-the-hash-and-winrm-detection">Pass-the-Hash and WinRM Detection</a></li>
+  <li><a href="#indicators-of-compromise">Indicators of Compromise</a></li>
+  <li><a href="#threat-hunting-playbook">Threat Hunting Playbook</a></li>
+  <li><a href="#soc-investigation-checklist">SOC Investigation Checklist</a></li>
+  <li><a href="#security-findings">Security Findings</a></li>
+  <li><a href="#enterprise-security-hardening">Enterprise Security Hardening</a></li>
+  <li><a href="#incident-response-recommendations">Incident Response Recommendations</a></li>
+  <li><a href="#lessons-learned">Lessons Learned</a></li>
+  <li><a href="#learning-outcomes">Learning Outcomes</a></li>
+  <li><a href="#screenshot-and-evidence-index">Screenshot and Evidence Index</a></li>
+  <li><a href="#references-and-further-reading">References and Further Reading</a></li>
+  <li><a href="#repository-resources">Repository Resources</a></li>
+  <li><a href="#responsible-use">Responsible Use</a></li>
+</ul>
 
 </div>
 
