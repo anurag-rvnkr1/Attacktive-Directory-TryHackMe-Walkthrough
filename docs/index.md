@@ -1,10 +1,3 @@
-
----
-layout: default
-title: "Attacktive Directory"
-description: "A Windows Active Directory security assessment documenting Kerberos enumeration, AS-REP Roasting, SMB credential discovery, DCSync, Pass-the-Hash, detection engineering, and defensive hardening."
----
-
 <div class="ctf-hero">
 
   <h1>Attacktive Directory</h1>
